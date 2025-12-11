@@ -16,7 +16,7 @@ import items.Weapon;
 public class ItemFactory {
 
     // Folder where your text files live
-    private static final String DATA_DIR = "src/Legends_Monsters_and_Heroes/";
+    private static final String DATA_DIR = "Legends_Monsters_and_Heroes/";
 
     private static final String ARMORY_FILE    = DATA_DIR + "Armory.txt";
     private static final String WEAPONRY_FILE  = DATA_DIR + "Weaponry.txt";
