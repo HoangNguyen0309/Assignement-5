@@ -13,6 +13,9 @@ import world.World;
 
 public class Main {
     public static void main(String[] args) {
+        // For now, just hardcode the game type
+        String gameType = "Valor"; // or "Valor"
+
         Renderer renderer = new ConsoleRenderer();
         InputHandler input = new ConsoleInputHandler();
 
@@ -29,7 +32,7 @@ public class Main {
             return;
         }
 
-        World world = new World(8);
+        World world = new World(8, gameType);
         GameEngine engine = new GameEngine(world, party, renderer, input);
         engine.run();
     }

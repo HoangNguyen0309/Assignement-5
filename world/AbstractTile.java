@@ -11,4 +11,5 @@ public abstract class AbstractTile implements Tile {
 
     public boolean isAccessible() { return accessible; }
     public TileType getType() { return type; }
+    public void setAccessible(boolean accessible) { this.accessible = accessible; }
 }

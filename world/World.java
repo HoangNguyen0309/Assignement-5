@@ -9,18 +9,27 @@ import core.Position;
 
 public class World {
     private Tile[][] tiles;
-    private Position partyPosition;
+    private Position partyPosition=null;
+    private Position[] ValorHeroPosition=null;
     private Random random;
+    private String type;
 
     // How much of the accessible area should be reachable from the start
     private static final double MIN_REACHABLE_FRACTION = 0.7;
     private static final int MAX_GENERATION_ATTEMPTS = 50;
 
-    public World(int size) {
+    public World(int size, String type) {
         this.random = new Random();
         this.tiles = new Tile[size][size];
-        this.partyPosition = new Position(size - 1, 0); // bottom-left start
-        generateDefaultWorld(size);
+        this.type = type;
+        if (type.equals("Hero and Monster")){
+            this.partyPosition = new Position(size - 1, 0); // bottom-left start
+            generateDefaultWorld(size);
+        }
+        if (type.equals("Valor")){
+            generateValorWorld(size);
+            this.ValorHeroPosition = new Position[]{new Position(size - 1, 0), new Position(size - 1, 3), new Position(size -1, 6)};
+        }
     }
 
     public int getSize() {
@@ -183,5 +192,34 @@ public class World {
             }
         }
         tiles[size - 1][0] = new CommonTile();
+    }
+
+    /*
+    *
+    */
+    private void generateValorWorld(int size) {
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                if (r == 0 && c != 2 && c != 5) {
+                    tiles[r][c] = new MonsterNexusTile();
+                }
+                else if (r == 7 && c != 2 && c != 5) {
+                    tiles[r][c] = new HeroNexusTile(null);
+                }
+                else if (c == 2 || c == 5) {
+                    tiles[r][c] = new InaccessibleTile();
+                }
+                else
+                    tiles[r][c] = new CommonTile();
+                
+
+            }
+        }
+    }
+    public Position[] getValorHeroPosition() {
+        return ValorHeroPosition;
+    }
+    public String getType() {
+        return type;
     }
 }
