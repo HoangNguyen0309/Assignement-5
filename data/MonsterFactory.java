@@ -14,7 +14,7 @@ import config.GameBalance;
 public class MonsterFactory {
 
     // Folder where your text files live (as in your screenshot)
-    private static final String DATA_DIR = "src/Legends_Monsters_and_Heroes/";
+    private static final String DATA_DIR = "Legends_Monsters_and_Heroes/";
 
     private static final String DRAGONS_FILE      = DATA_DIR + "Dragons.txt";
     private static final String EXOSKELETONS_FILE = DATA_DIR + "Exoskeletons.txt";

@@ -12,7 +12,7 @@ import characters.HeroType;
 public class HeroFactory {
 
     // 👇 Folder where your text files live (relative to project root / working dir)
-    private static final String DATA_DIR = "src/Legends_Monsters_and_Heroes/";
+    private static final String DATA_DIR = "Legends_Monsters_and_Heroes/";
 
     private static final String WARRIORS_FILE  = DATA_DIR + "Warriors.txt";
     private static final String PALADINS_FILE  = DATA_DIR + "Paladins.txt";
