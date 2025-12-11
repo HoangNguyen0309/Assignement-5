@@ -1,6 +1,7 @@
 package io;
 
 import java.util.List;
+import java.util.Map;
 
 import characters.Hero;
 import characters.Monster;
@@ -13,6 +14,129 @@ import items.Spell;
 import items.Armor;
 
 public class ConsoleRenderer implements Renderer {
+
+    @Override
+    public void renderWorld(World world,
+                            Map<Hero, Position> heroPositions,
+                            Map<Monster, Position> monsterPositions) {
+        int size = world.getSize();
+        System.out.println("=== LEGENDS OF VALOR BOARD ===");
+
+        int cellWidth  = 4; // interior characters
+        int cellHeight = 4; // interior characters
+
+        for (int r = 0; r < size; r++) {
+            // Top border for this row
+            StringBuilder border = new StringBuilder();
+            for (int c = 0; c < size; c++) {
+                border.append("+");
+                for (int i = 0; i < cellWidth; i++) {
+                    border.append("-");
+                }
+            }
+            border.append("+");
+            System.out.println(border.toString());
+
+            // Interior rows for this board row
+            for (int ir = 0; ir < cellHeight; ir++) {
+                StringBuilder line = new StringBuilder();
+                for (int c = 0; c < size; c++) {
+                    line.append("|");
+
+                    Tile tile = world.getTile(r, c);
+                    char baseChar;
+                    switch (tile.getType()) {
+                        case INACCESSIBLE:
+                            baseChar = 'X';
+                            break;
+                        case HERO_NEXUS:
+                            baseChar = 'H';
+                            break;
+                        case MONSTER_NEXUS:
+                            baseChar = 'M';
+                            break;
+                        case BUSH:
+                            baseChar = 'B';
+                            break;
+                        case CAVE:
+                            baseChar = 'C';
+                            break;
+                        case KOULOU:
+                            baseChar = 'K';
+                            break;
+                        case OBSTACLE:
+                            baseChar = 'O';
+                            break;
+                        default:
+                            baseChar = 'P'; // Plain/common
+                            break;
+                    }
+
+                    // Overlay heroes / monsters
+                    char cellChar = getOccupantChar(r, c, heroPositions, monsterPositions, baseChar);
+
+                    int centerRow = 1; // which interior row to draw symbol on
+                    int centerCol = 1; // which interior col to draw symbol on
+
+                    for (int ic = 0; ic < cellWidth; ic++) {
+                        if (ir == centerRow && ic == centerCol) {
+                            line.append(cellChar);
+                        } else {
+                            line.append(' ');
+                        }
+                    }
+                }
+                line.append("|");
+                System.out.println(line.toString());
+            }
+        }
+
+        // Bottom border
+        StringBuilder bottom = new StringBuilder();
+        for (int c = 0; c < size; c++) {
+            bottom.append("+");
+            for (int i = 0; i < cellWidth; i++) {
+                bottom.append("-");
+            }
+        }
+        bottom.append("+");
+        System.out.println(bottom.toString());
+
+        System.out.println("Legend:");
+        System.out.println("  H = Hero Nexus");
+        System.out.println("  M = Monster Nexus");
+        System.out.println("  P = Plain tile");
+        System.out.println("  X = Inaccessible");
+        System.out.println("  B/C/K = Bush/Cave/Koulou");
+        System.out.println("  O = Obstacle");
+        System.out.println("  h = Hero");
+        System.out.println("  m = Monster");
+        System.out.println();
+    }
+
+    private static class CharacterCell {
+        char ch;
+        CharacterCell(char ch) { this.ch = ch; }
+    }
+
+    private char getOccupantChar(int row, int col,
+                                 Map<Hero, Position> heroPositions,
+                                 Map<Monster, Position> monsterPositions,
+                                 char baseChar) {
+        for (Map.Entry<Hero, Position> e : heroPositions.entrySet()) {
+            Position p = e.getValue();
+            if (p != null && p.getRow() == row && p.getCol() == col) {
+                return 'h'; // later: H1/H2/H3 if you want
+            }
+        }
+        for (Map.Entry<Monster, Position> e : monsterPositions.entrySet()) {
+            Position p = e.getValue();
+            if (p != null && p.getRow() == row && p.getCol() == col) {
+                return 'm';
+            }
+        }
+        return baseChar;
+    }
 
     public void renderWorld(World world) {
         int size = world.getSize();
