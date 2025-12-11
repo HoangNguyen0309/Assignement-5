@@ -97,14 +97,12 @@ public class StandardBattle implements Battle {
         BattleContext ctx = new BattleContext(this, monsters, contributions);
 
         while (hasLivingHeroes() && hasLivingMonsters()) {
-            // Heroes' turn
-            for (Hero hero : heroes) {
-                if (hero.isFainted()) continue;
-                heroTurn(hero, ctx);
-                if (!hasLivingMonsters()) break;
-            }
+            // Heroes' turn (player chooses order)
+            heroesTurn(ctx);
 
-            if (!hasLivingMonsters()) break;
+            if (!hasLivingMonsters()) {
+                break;
+            }
 
             // Monsters' turn
             monstersTurn(ctx);
@@ -117,6 +115,55 @@ public class StandardBattle implements Battle {
             renderer.renderMessage("Heroes have been defeated...");
         }
     }
+
+    private void heroesTurn(BattleContext ctx) {
+        // Build a list of heroes who can act this round
+        List<Hero> available = new ArrayList<Hero>();
+        for (Hero h : heroes) {
+            if (!h.isFainted()) {
+                available.add(h);
+            }
+        }
+
+        if (available.isEmpty()) {
+            return;
+        }
+
+        // While there are heroes who haven't acted and monsters still alive
+        while (!available.isEmpty() && hasLivingMonsters()) {
+            renderer.renderHeroStats(heroes);
+            renderer.renderMonsterStats(monsters);
+
+            renderer.renderMessage("Choose a hero to act this turn:");
+            for (int i = 0; i < available.size(); i++) {
+                Hero h = available.get(i);
+                renderer.renderMessage("  " + (i + 1) + ") " +
+                        h.getName() +
+                        " (Lv " + h.getLevel() +
+                        ", HP " + h.getHP() + "/" + h.getMaxHP() + ")");
+            }
+            renderer.renderMessage("  0) Cancel hero phase (end heroes' turn)");
+
+            int choice = input.readInt();
+            if (choice == 0) {
+                // End heroes' phase early if player wants
+                return;
+            }
+            choice--;
+
+            if (choice < 0 || choice >= available.size()) {
+                renderer.renderMessage("Invalid hero choice.");
+                continue;
+            }
+
+            Hero actingHero = available.remove(choice);
+
+            // Let that hero pick an action (Attack, Cast Spell, Skip, etc.)
+            heroTurn(actingHero, ctx);
+        }
+    }
+
+
 
     private void heroTurn(Hero hero, BattleContext ctx) {
         renderer.renderHeroStats(heroes);

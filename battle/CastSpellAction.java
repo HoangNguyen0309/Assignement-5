@@ -2,7 +2,6 @@ package battle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import characters.Hero;
 import characters.Monster;
@@ -12,8 +11,6 @@ import items.Item;
 import items.Spell;
 
 public class CastSpellAction implements HeroAction {
-
-    private Random rand = new Random();
 
     @Override
     public String getName() {
@@ -28,11 +25,12 @@ public class CastSpellAction implements HeroAction {
                         InputHandler input,
                         StandardBattle.BattleContext ctx) {
 
+        // Collect all spells in hero inventory
         List<Item> items = hero.getInventory().getItems();
         List<Spell> spells = new ArrayList<Spell>();
         for (Item item : items) {
             if (item instanceof Spell) {
-                spells.add((Spell)item);
+                spells.add((Spell) item);
             }
         }
 
@@ -41,51 +39,94 @@ public class CastSpellAction implements HeroAction {
             return;
         }
 
-        renderer.renderMessage("Choose a spell:");
+        // Choose spell
+        renderer.renderMessage("Choose a spell to cast:");
         for (int i = 0; i < spells.size(); i++) {
             Spell s = spells.get(i);
-            renderer.renderMessage("  " + (i+1) + ") " + s.getName() +
+            String effectDesc = (s.getEffect() != null) ? s.getEffect().describe() : "";
+            renderer.renderMessage("  " + (i + 1) + ") " + s.getName() +
                     " | Dmg: " + s.getBaseDamage() +
                     " | MP: " + s.getManaCost() +
-                    " | Effect: " + (s.getEffect() != null ? s.getEffect().describe() : ""));
+                    " | Effect: " + effectDesc);
         }
         renderer.renderMessage("  0) Back");
 
-        int choice = input.readInt();
-        if (choice == 0) return;
-        choice--;
+        int spellChoice = input.readInt();
+        if (spellChoice == 0) {
+            return;
+        }
+        spellChoice--;
 
-        if (choice < 0 || choice >= spells.size()) {
-            renderer.renderMessage("Invalid choice.");
+        if (spellChoice < 0 || spellChoice >= spells.size()) {
+            renderer.renderMessage("Invalid spell choice.");
             return;
         }
 
-        Spell spell = spells.get(choice);
+        Spell spell = spells.get(spellChoice);
+
         if (hero.getMana() < spell.getManaCost()) {
             renderer.renderMessage("Not enough mana.");
             return;
         }
 
+        // Build list of living monsters
         List<Monster> living = new ArrayList<Monster>();
         for (Monster m : monsters) {
-            if (!m.isFainted()) living.add(m);
+            if (!m.isFainted()) {
+                living.add(m);
+            }
         }
+
         if (living.isEmpty()) {
             renderer.renderMessage("No monsters to target.");
             return;
         }
 
-        Monster target = living.get(rand.nextInt(living.size()));
+        // Choose target monster
+        renderer.renderMessage("Choose a monster to target with " + spell.getName() + ":");
+        for (int i = 0; i < living.size(); i++) {
+            Monster m = living.get(i);
+            renderer.renderMessage("  " + (i + 1) + ") " +
+                    m.getName() +
+                    " (Lv " + m.getLevel() +
+                    ", HP " + m.getHP() + "/" + m.getMaxHP() + ")");
+        }
+        renderer.renderMessage("  0) Back");
 
+        int targetChoice = input.readInt();
+        if (targetChoice == 0) {
+            return;
+        }
+        targetChoice--;
+
+        if (targetChoice < 0 || targetChoice >= living.size()) {
+            renderer.renderMessage("Invalid target choice.");
+            return;
+        }
+
+        Monster target = living.get(targetChoice);
+
+        // Spend mana and cast
         hero.restoreMana(-spell.getManaCost());
-        int dealt = spell.cast(hero, target);
-        ctx.addDamageDealt(hero, dealt);
+
+        int hpBefore = target.getHP();
+        int rawDealt = spell.cast(hero, target);
+        int hpAfter = target.getHP();
+
+        int effective = hpBefore - hpAfter;
+        if (effective < 0) {
+            effective = 0;
+        }
+
+        ctx.addDamageDealt(hero, effective);
 
         renderer.renderMessage(hero.getName() + " casts " +
                 spell.getName() + " on " + target.getName() +
-                " for " + dealt + " damage!");
+                " for " + effective + " damage (raw: " + rawDealt + ").");
 
+        // Spell is single-use: remove from inventory
         hero.getInventory().remove(spell);
+
         ctx.removeDeadMonsters();
     }
 }

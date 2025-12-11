@@ -2,7 +2,6 @@ package battle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import characters.Hero;
 import characters.Monster;
@@ -10,8 +9,6 @@ import io.InputHandler;
 import io.Renderer;
 
 public class AttackAction implements HeroAction {
-
-    private Random rand = new Random();
 
     @Override
     public String getName() {
@@ -26,25 +23,61 @@ public class AttackAction implements HeroAction {
                         InputHandler input,
                         StandardBattle.BattleContext ctx) {
 
+        // Build list of living monsters
         List<Monster> living = new ArrayList<Monster>();
         for (Monster m : monsters) {
-            if (!m.isFainted()) living.add(m);
+            if (!m.isFainted()) {
+                living.add(m);
+            }
         }
+
         if (living.isEmpty()) {
             renderer.renderMessage("No monsters to attack.");
             return;
         }
 
-        Monster target = living.get(rand.nextInt(living.size()));
-        int baseDamage = hero.basicAttackDamage();
-        int effective = baseDamage - target.getDefense();
-        if (effective < 0) effective = 0;
+        // Let the player choose which monster to attack
+        renderer.renderMessage("Choose a monster to attack:");
+        for (int i = 0; i < living.size(); i++) {
+            Monster m = living.get(i);
+            renderer.renderMessage("  " + (i + 1) + ") " +
+                    m.getName() +
+                    " (Lv " + m.getLevel() +
+                    ", HP " + m.getHP() + "/" + m.getMaxHP() + ")");
+        }
+        renderer.renderMessage("  0) Back");
 
-        target.takeDamage(baseDamage); // Monster takes defense into account internally
+        int choice = input.readInt();
+        if (choice == 0) {
+            // cancel attack
+            return;
+        }
+        choice--;
+
+        if (choice < 0 || choice >= living.size()) {
+            renderer.renderMessage("Invalid target choice.");
+            return;
+        }
+
+        Monster target = living.get(choice);
+
+        int baseDamage = hero.basicAttackDamage();
+
+        // Monster handles its own defense internally in takeDamage(...)
+        int hpBefore = target.getHP();
+        target.takeDamage(baseDamage);
+        int hpAfter = target.getHP();
+
+        int effective = hpBefore - hpAfter;
+        if (effective < 0) {
+            effective = 0;
+        }
+
         ctx.addDamageDealt(hero, effective);
 
         renderer.renderMessage(hero.getName() + " attacked " +
                 target.getName() + " for " + effective + " damage.");
+
         ctx.removeDeadMonsters();
     }
 }
