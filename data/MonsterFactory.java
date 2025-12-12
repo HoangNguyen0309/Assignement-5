@@ -10,7 +10,6 @@ import java.util.Random;
 import characters.Monster;
 import config.GameBalance;
 
-
 public class MonsterFactory {
 
     // Folder where your text files live (as in your screenshot)
@@ -81,46 +80,39 @@ public class MonsterFactory {
     }
 
     /**
-     * Spawn monsters for a battle in a way that is "fair":
-     *  - Use monsters whose level is close to the party's average level.
-     *  - Start with range [avg-1, avg+1]; if empty, widen gradually.
+     * Spawn monsters with level targeting the provided level (or the closest available).
      */
-    public List<Monster> spawnMonstersForBattle(int count, int partyAverageLevel) {
+    public List<Monster> spawnMonstersForBattle(int count, int targetLevel) {
         ensureLoaded();
 
-        /**
-        if (templates.isEmpty()) {
-            // Fallback – shouldn't happen unless files are missing
-            List<Monster> fallback = new ArrayList<Monster>();
-            for (int i = 0; i < count; i++) {
-                fallback.add(new Monster("Slime", partyAverageLevel,
-                        computeHp(partyAverageLevel), 20, 5, 5));
-            }
-            return fallback;
-        }
-         **/
+        int desiredLevel = Math.max(1, targetLevel);
 
-        int avg = Math.max(1, partyAverageLevel);
-
-        // Gradually widen the allowed level band until we have candidates.
+        // First try exact level matches
         List<MonsterTemplate> candidates = new ArrayList<MonsterTemplate>();
-        int band = 1;
-        while (candidates.isEmpty() && band <= 10) {
-            int minLevel = Math.max(1, avg - band);
-            int maxLevel = avg + band;
+        for (MonsterTemplate t : templates) {
+            if (t.level == desiredLevel) {
+                candidates.add(t);
+            }
+        }
 
-            candidates.clear();
+        // If none, choose the closest level band
+        if (candidates.isEmpty()) {
+            int bestDiff = Integer.MAX_VALUE;
             for (MonsterTemplate t : templates) {
-                if (t.level >= minLevel && t.level <= maxLevel) {
+                int diff = Math.abs(t.level - desiredLevel);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                }
+            }
+            for (MonsterTemplate t : templates) {
+                if (Math.abs(t.level - desiredLevel) == bestDiff) {
                     candidates.add(t);
                 }
             }
-            band++;
         }
 
-        // Still empty? Use everything.
         if (candidates.isEmpty()) {
-            candidates.addAll(templates);
+            return new ArrayList<Monster>();
         }
 
         List<Monster> monsters = new ArrayList<Monster>();
@@ -132,12 +124,11 @@ public class MonsterFactory {
     }
 
     private Monster instantiateMonster(MonsterTemplate t) {
-        /** int hp = computeHp(t.level); **/
         return new Monster(t.name, t.level, t.damage, t.defense, t.dodgeChance);
     }
 
     /**
-     * Simple HP formula – you can tune it.
+     * Simple HP formula �C you can tune it.
      * Here: base 100 + 50 * level
      */
     private int computeHp(int level) {

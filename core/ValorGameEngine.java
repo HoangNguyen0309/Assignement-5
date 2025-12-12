@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Random;
 
 import battle.Battle;
+import battle.BattleSupport;
+import battle.CombatResolver;
+import battle.RewardService;
 import characters.Hero;
 import characters.Monster;
 import config.GameBalance;
@@ -302,13 +305,8 @@ public class ValorGameEngine implements Battle {
         }
 
         Monster target = targetsInRange.get(choice);
-        int baseDamage = hero.basicAttackDamage();
-
-        int hpBefore = target.getHP();
-        target.takeDamage(baseDamage); // Monster handles defense internally
-        int hpAfter = target.getHP();
-        int effective = hpBefore - hpAfter;
-        if (effective < 0) effective = 0;
+        TileType tileType = world.getTile(heroPos.getRow(), heroPos.getCol()).getType();
+        int effective = CombatResolver.computeHeroAttackDamage(hero, target, tileType);
 
         renderer.renderMessage(hero.getName() +
                 " attacked " + target.getName() +
@@ -316,10 +314,8 @@ public class ValorGameEngine implements Battle {
 
         if (target.isFainted()) {
             renderer.renderMessage(target.getName() + " has been defeated!");
-            // Simple XP reward: proportional to monster level
-            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL;
-            hero.gainExperience(xp);
-            renderer.renderMessage(hero.getName() + " gains " + xp + " XP.");
+            RewardService.rewardForMonsterKill(heroes, target);
+            renderKillRewards(target);
         }
     }
 
@@ -408,25 +404,20 @@ public class ValorGameEngine implements Battle {
 
         // Spend mana and cast
         hero.restoreMana(-spell.getManaCost());
-        int hpBefore = target.getHP();
-        int rawDealt = spell.cast(hero, target);
-        int hpAfter = target.getHP();
-
-        int effective = hpBefore - hpAfter;
-        if (effective < 0) effective = 0;
+        TileType tileType = world.getTile(heroPos.getRow(), heroPos.getCol()).getType();
+        int effective = CombatResolver.computeSpellDamage(hero, target, spell, tileType);
 
         renderer.renderMessage(hero.getName() + " casts " +
                 spell.getName() + " on " + target.getName() +
-                " for " + effective + " damage (raw: " + rawDealt + ").");
+                " for " + effective + " damage.");
 
         // Single-use spell
         hero.getInventory().remove(spell);
 
         if (target.isFainted()) {
             renderer.renderMessage(target.getName() + " has been defeated!");
-            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL;
-            hero.gainExperience(xp);
-            renderer.renderMessage(hero.getName() + " gains " + xp + " XP.");
+            RewardService.rewardForMonsterKill(heroes, target);
+            renderKillRewards(target);
         }
     }
 
@@ -556,19 +547,20 @@ public class ValorGameEngine implements Battle {
     }
 
     private void attackHero(Monster monster, Hero target) {
-        int rawDamage = monster.getDamage();
-        int reducedDamage = rawDamage - target.getArmorReduction();
-        if (reducedDamage < 0) reducedDamage = 0;
-
-        if (target.tryDodge()) {
+        Position targetPos = heroPositions.get(target);
+        TileType tileType = TileType.COMMON;
+        if (targetPos != null && world.isInside(targetPos)) {
+            tileType = world.getTile(targetPos.getRow(), targetPos.getCol()).getType();
+        }
+        int dealt = CombatResolver.computeMonsterAttackDamage(monster, target, tileType);
+        if (dealt == 0) {
             renderer.renderMessage(target.getName() +
                     " dodged the attack from " + monster.getName() + "!");
             return;
         }
 
-        target.takeDamage(reducedDamage);
         renderer.renderMessage(monster.getName() + " attacked " +
-                target.getName() + " for " + reducedDamage + " damage.");
+                target.getName() + " for " + dealt + " damage.");
 
         if (target.isFainted()) {
             renderer.renderMessage(target.getName() + " has fallen in this round.");
@@ -599,34 +591,29 @@ public class ValorGameEngine implements Battle {
                 if (spawn != null) {
                     heroPositions.put(h, new Position(spawn.getRow(), spawn.getCol()));
                 }
-                // Fully restore HP & Mana
-                h.heal(h.getMaxHP());
-                h.restoreMana(h.getMaxMana());
+                BattleSupport.fullyRestore(h);
                 renderer.renderMessage(h.getName() + " is revived at their Hero Nexus!");
             }
         }
 
-        // Simple 10% HP/MP recovery for surviving heroes
-        for (Hero h : heroes) {
-            if (!h.isFainted()) {
-                int healAmount = (int) (h.getMaxHP() * 0.1);
-                int manaAmount = (int) (h.getMaxMana() * 0.1);
-                h.heal(healAmount);
-                h.restoreMana(manaAmount);
-            }
-        }
+        // End-of-round recovery for living heroes
+        BattleSupport.recoverHeroesEndOfRound(heroes, GameBalance.END_OF_ROUND_RECOVER_FRACTION);
 
-        // Simple 10% HP recovery for monsters
+        // Simple recovery for monsters mirrors heroes' fraction
         for (Monster m : monsters) {
             if (!m.isFainted()) {
-                int healAmount = (int) (m.getMaxHP() * 0.1);
+                int healAmount = (int) (m.getMaxHP() * GameBalance.END_OF_ROUND_RECOVER_FRACTION);
                 m.heal(healAmount);
             }
         }
 
-        // New monster wave every MONSTER_WAVE_PERIOD rounds
+        // New monster wave and small reward every MONSTER_WAVE_PERIOD rounds
         if (roundCount > 0 && roundCount % MONSTER_WAVE_PERIOD == 0) {
             spawnMonsterWave();
+            RewardService.rewardEndOfWave(heroes);
+            renderer.renderMessage("End-of-wave reward: +" +
+                    GameBalance.END_OF_WAVE_GOLD + " gold and +" +
+                    GameBalance.END_OF_WAVE_XP + " XP to each hero.");
         }
 
         // Check win/lose at the end of the round as well
@@ -883,5 +870,18 @@ public class ValorGameEngine implements Battle {
             }
         }
         return false;
+    }
+
+    // -------------------------------------------------------------
+    // Reward messaging helpers
+    // -------------------------------------------------------------
+
+    private void renderKillRewards(Monster target) {
+        if (target == null) return;
+        int goldReward = Math.max(GameBalance.GOLD_PER_MONSTER_LEVEL * target.getLevel(),
+                GameBalance.GOLD_FALLBACK_PER_MONSTER);
+        int xpReward = Math.max(GameBalance.XP_PER_MONSTER_LEVEL * target.getLevel(),
+                GameBalance.XP_FALLBACK_PER_MONSTER);
+        renderer.renderMessage("Each hero gains +" + goldReward + " gold and +" + xpReward + " XP for the kill.");
     }
 }
