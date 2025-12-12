@@ -2,9 +2,7 @@ package world;
 
 import market.Market;
 
-class HeroNexusTile extends MarketTile {
-
-    private Market market;
+public class HeroNexusTile extends MarketTile {
 
     public HeroNexusTile(Market market) {
         super(market);
