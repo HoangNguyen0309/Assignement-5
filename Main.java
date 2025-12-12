@@ -51,7 +51,7 @@ public class Main {
             GameEngine engine = new GameEngine(world, party, renderer, input);
             engine.run();
         } else {
-            World world = new World(8, "Valor");
+            World world = World.createValorWorld();
             ValorGameEngine valorEngine = new ValorGameEngine(world, party, renderer, input);
             valorEngine.run();
         }
