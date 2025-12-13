@@ -15,14 +15,14 @@ public class PartyBuilder {
     private static final int VALOR_PARTY_SIZE = 3; // exactly 3 heroes, one per lane
 
     /**
-     * Classic builder: player chooses how many heroes (1–3).
+     * Classic builder: player chooses how many heroes (1-3).
      * Used for "Legends: Monsters and Heroes".
      */
     public static List<Hero> buildParty(Renderer renderer,
                                         InputHandler input,
                                         HeroFactory heroFactory) {
 
-        renderer.renderMessage("How many heroes will form your party? (1–" + MAX_HEROES + ")");
+        renderer.renderMessage("How many heroes will form your party? (1-" + MAX_HEROES + ")");
         int numHeroes = 0;
         while (numHeroes < 1 || numHeroes > MAX_HEROES) {
             numHeroes = input.readInt();

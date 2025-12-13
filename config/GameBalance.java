@@ -59,11 +59,20 @@ public final class GameBalance {
 
     public static final int XP_PER_MONSTER_LEVEL    = 20;
     public static final int XP_FALLBACK_PER_MONSTER = 10;
+    public static final int GOLD_PER_MONSTER_LEVEL   = 500;
+    public static final int GOLD_FALLBACK_PER_MONSTER = 200;
 
     public static final double CONTRIBUTION_TAKEN_WEIGHT  = 0.5;
     public static final double CONTRIBUTION_DODGED_WEIGHT = 0.5;
 
     public static final double REVIVE_HP_FRACTION = 0.5;
+    public static final double END_OF_ROUND_RECOVER_FRACTION = 0.1;
+    public static final int END_OF_WAVE_GOLD = 50;
+    public static final int END_OF_WAVE_XP   = 10;
+
+    // Legends of Valor terrain
+    public static final double TERRAIN_BUFF_MULTIPLIER    = 1.1;
+    public static final double TERRAIN_DEFENSE_MULTIPLIER = 0.9;
 
     // ----------------------------
     // Loot / market / economy

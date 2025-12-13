@@ -8,11 +8,14 @@ import java.util.Map;
 import java.util.Random;
 
 import battle.Battle;
+import battle.BattleSupport;
+import battle.CombatResolver;
+import battle.RewardService;
 import characters.Hero;
 import characters.Monster;
 import config.GameBalance;
-import data.ItemFactory;
 import data.MonsterFactory;
+import data.ItemFactory;
 import io.InputHandler;
 import io.Renderer;
 import items.Armor;
@@ -91,9 +94,30 @@ public class ValorGameEngine implements Battle {
         spawnInitialMonsters();
     }
 
-    @Override
-    public void start() {
-        run();
+    // --------------------------------------------------------
+    // Initialization
+    // --------------------------------------------------------
+
+    private void initHeroPositions() {
+        // We assume 8x8 Valor world:
+        // row 7 (bottom) = HERO_NEXUS (except col 2 and 5)
+        // columns: lane0 => 0,1 ; lane1 => 3,4 ; lane2 => 6,7
+        // We place heroes at (7,0), (7,3), (7,6) in order.
+        int size = world.getSize();
+        int[][] spawnCoords = {
+                { size - 1, 0 },
+                { size - 1, 3 },
+                { size - 1, 6 }
+        };
+
+        for (int i = 0; i < heroes.size() && i < spawnCoords.length; i++) {
+            Hero h = heroes.get(i);
+            int r = spawnCoords[i][0];
+            int c = spawnCoords[i][1];
+            Position pos = new Position(r, c);
+            heroPositions.put(h, pos);
+            heroSpawnPositions.put(h, new Position(r, c));
+        }
     }
 
     public void run() {
@@ -107,21 +131,38 @@ public class ValorGameEngine implements Battle {
             heroPhase();
             if (gameOver) break;
 
-            // 3. Monster phase
-            monsterPhase();
-            if (gameOver) break;
+    private void spawnInitialMonsters() {
+        int avgLevel = averageHeroLevel();
+        List<Monster> initial = monsterFactory.spawnMonstersForBattle(3, avgLevel);
 
-            // 4. Cleanup
-            cleanupPhase();
-
-            // 5. End-of-round recovery, respawn, new waves, win/lose checks
-            endOfRound();
-
-            roundCount++;
+        if (initial.isEmpty()) {
+            renderer.renderMessage("DEBUG: MonsterFactory returned no monsters!");
+            return;
         }
 
-        renderer.renderMessage("Game over. Thanks for playing Legends of Valor!");
-    }
+        // Find one Monster Nexus tile per lane by scanning row 0
+        int size = world.getSize();
+        Position[] laneSpawns = new Position[3]; // lane 0,1,2
+
+        for (int c = 0; c < size; c++) {
+            Tile t = world.getTile(0, c);
+            if (t.getType() != TileType.MONSTER_NEXUS) continue;
+
+            Position p = new Position(0, c);
+            int lane = laneIndex(p); // reuse your laneIndex method
+            if (lane >= 0 && lane < 3 && laneSpawns[lane] == null) {
+                laneSpawns[lane] = p;
+            }
+        }
+
+        // Fallback: if any lane is missing, just skip that lane
+        for (int i = 0; i < initial.size() && i < laneSpawns.length; i++) {
+            if (laneSpawns[i] == null) {
+                renderer.renderMessage("DEBUG: No Monster Nexus found for lane " + i);
+                continue;
+            }
+            Monster m = initial.get(i);
+            Position spawnPos = laneSpawns[i];
 
     // ------------------------------------------------------------
     // Initialization
@@ -311,8 +352,7 @@ public class ValorGameEngine implements Battle {
         for (int i = 0; i < targetsInRange.size(); i++) {
             Monster m = targetsInRange.get(i);
             renderer.renderMessage("  " + (i + 1) + ") " +
-                    m.getName() +
-                    " (Lv " + m.getLevel() +
+                    m.getName() + " (Lv " + m.getLevel() +
                     ", HP " + m.getHP() + "/" + m.getMaxHP() + ")");
         }
         renderer.renderMessage("  0) Back");
@@ -438,12 +478,8 @@ public class ValorGameEngine implements Battle {
 
         // Spend mana and cast
         hero.restoreMana(-spell.getManaCost());
-        int hpBefore = target.getHP();
-        int rawDealt = spell.cast(hero, target);
-        int hpAfter = target.getHP();
-
-        int effective = hpBefore - hpAfter;
-        if (effective < 0) effective = 0;
+        TileType tileType = world.getTile(heroPos.getRow(), heroPos.getCol()).getType();
+        int effective = CombatResolver.computeSpellDamage(hero, target, spell, tileType);
 
         renderer.renderMessage(hero.getName() + " casts " +
                 spell.getName() + " on " + target.getName() +
@@ -543,14 +579,30 @@ public class ValorGameEngine implements Battle {
             return;
         }
 
-        if (!(tile instanceof MarketTile)) {
-            renderer.renderMessage("This Hero Nexus cannot host a market.");
+        Position dest = possible.get(destChoice);
+        heroPositions.put(h, dest);
+        renderer.renderMessage(h.getName() + " teleports to (" +
+                dest.getRow() + ", " + dest.getCol() + ").");
+    }
+
+    private void handleRecall(Hero h) {
+        Position spawn = heroSpawnPositions.get(h);
+        if (spawn == null) {
+            renderer.renderMessage("No Nexus spawn position for " + h.getName() + ".");
             return;
         }
+        heroPositions.put(h, new Position(spawn.getRow(), spawn.getCol()));
+        renderer.renderMessage(h.getName() + " recalls to their Nexus at (" +
+                spawn.getRow() + ", " + spawn.getCol() + ").");
+    }
 
-        MarketTile mTile = (MarketTile) tile;
-        if (mTile.getMarket() == null) {
-            mTile.setMarket(new Market(itemFactory, hero.getLevel()));
+    private void openShopIfAtHeroNexus(Hero h) {
+        Position p = heroPositions.get(h);
+        if (p == null) return;
+        Tile tile = world.getTile(p.getRow(), p.getCol());
+        if (tile.getType() != TileType.HERO_NEXUS) {
+            renderer.renderMessage("You must stand on your Nexus to shop.");
+            return;
         }
 
         // You can let the whole party shop, or just this hero. Reuse existing API:
@@ -737,9 +789,9 @@ public class ValorGameEngine implements Battle {
         return color + text + "\u001B[0m";
     }
 
-    // ------------------------------------------------------------
-    // Monster Phase
-    // ------------------------------------------------------------
+    // --------------------------------------------------------
+    // Monster phase + pathfinding
+    // --------------------------------------------------------
 
     private void monsterPhase() {
         for (Monster monster : monsters) {
@@ -775,9 +827,11 @@ public class ValorGameEngine implements Battle {
                 }
             }
 
-            // If monster steps on Hero Nexus, they may have just won
-            checkWinLoseConditions();
-            if (gameOver) return;
+            // Otherwise, try to pathfind toward hero Nexus in lane
+            Position next = computeMonsterStep(m);
+            if (next != null) {
+                monsterPositions.put(m, next);
+            }
         }
     }
 
@@ -811,13 +865,56 @@ public class ValorGameEngine implements Battle {
         logAction(monster.getName() + " attacked " + target.getName() + " for " + reducedDamage + " damage.");
 
         if (target.isFainted()) {
-            renderer.renderMessage(target.getName() + " has fallen in this round.");
+            renderer.renderMessage(target.getName() + " has fallen!");
         }
     }
 
-    // ------------------------------------------------------------
-    // Cleanup & end-of-round
-    // ------------------------------------------------------------
+    /**
+     * Monster pathfinding:
+     *  - stays in its lane (2 columns)
+     *  - BFS toward its lane's hero Nexus
+     *  - cannot move onto heroes or monsters
+     *  - cannot move behind a hero in that lane (cannot go further toward hero Nexus)
+     */
+    private Position computeMonsterStep(Monster m) {
+        Position start = monsterPositions.get(m);
+        if (start == null) return null;
+
+        int lane = laneIndex(start);
+        if (lane == -1) return null;
+
+        // Monsters move "down" (toward hero Nexus), then maybe sidestep in-lane
+        int[][] candidates = {
+                { 1, 0 },  // straight down
+                { 0, -1 }, // left within lane
+                { 0, 1 }   // right within lane
+        };
+
+        for (int[] d : candidates) {
+            int nr = start.getRow() + d[0];
+            int nc = start.getCol() + d[1];
+            if (isValidMonsterStep(m, start, nr, nc)) {
+                return new Position(nr, nc);
+            }
+        }
+
+        // No valid move
+        return null;
+    }
+
+    private Position heroNexusForLane(int lane) {
+        int size = world.getSize();
+        switch (lane) {
+            case 0: return new Position(size - 1, 0);
+            case 1: return new Position(size - 1, 3);
+            case 2: return new Position(size - 1, 6);
+        }
+        return new Position(size - 1, 0);
+    }
+
+    private boolean isValidMonsterStep(Monster m, Position from, int nr, int nc) {
+        int size = world.getSize();
+        if (nr < 0 || nr >= size || nc < 0 || nc >= size) return false;
 
     private void cleanupPhase() {
         // Remove dead monsters from list + position map
@@ -858,23 +955,17 @@ public class ValorGameEngine implements Battle {
             }
         }
 
-        // Simple 10% HP/MP recovery for surviving heroes
-        for (Hero h : heroes) {
-            if (!h.isFainted()) {
-                int healAmount = (int) (h.getMaxHP() * 0.1);
-                int manaAmount = (int) (h.getMaxMana() * 0.1);
-                h.heal(healAmount);
-                h.restoreMana(manaAmount);
-            }
-        }
+        // End-of-round recovery for living heroes
+        BattleSupport.recoverHeroesEndOfRound(heroes, GameBalance.END_OF_ROUND_RECOVER_FRACTION);
 
-        // Simple 10% HP recovery for monsters
+        // Simple recovery for monsters mirrors heroes' fraction
         for (Monster m : monsters) {
             if (!m.isFainted()) {
-                int healAmount = (int) (m.getMaxHP() * 0.1);
+                int healAmount = (int) (m.getMaxHP() * GameBalance.END_OF_ROUND_RECOVER_FRACTION);
                 m.heal(healAmount);
             }
         }
+    }
 
         // New monster wave every MONSTER_WAVE_PERIOD rounds
         if (roundCount > 0 && roundCount % MONSTER_WAVE_PERIOD == 0) {
@@ -923,54 +1014,36 @@ public class ValorGameEngine implements Battle {
         assignMonsterCodes();
     }
 
-    private void checkWinLoseConditions() {
-        // Heroes win if any hero stands on a MONSTER_NEXUS
+    private void checkWinLose() {
+        // If any hero reaches a Monster Nexus tile -> heroes win.
         for (Map.Entry<Hero, Position> e : heroPositions.entrySet()) {
             Hero h = e.getKey();
-            if (h.isFainted()) continue;
             Position p = e.getValue();
             if (p == null) continue;
-            TileType t = world.getTile(p.getRow(), p.getCol()).getType();
-            if (t == TileType.MONSTER_NEXUS) {
-                renderer.renderMessage(h.getName() +
-                        " has reached the Monster Nexus! Heroes win!");
+            Tile t = world.getTile(p.getRow(), p.getCol());
+            if (t.getType() == TileType.MONSTER_NEXUS) {
+                renderer.renderMessage("Heroes reach the Monster Nexus! Heroes win!");
                 gameOver = true;
                 return;
             }
         }
 
-        // Monsters win if any monster stands on a HERO_NEXUS
+        // If any monster reaches a Hero Nexus tile -> monsters win.
         for (Map.Entry<Monster, Position> e : monsterPositions.entrySet()) {
             Monster m = e.getKey();
-            if (m.isFainted()) continue;
             Position p = e.getValue();
             if (p == null) continue;
-            TileType t = world.getTile(p.getRow(), p.getCol()).getType();
-            if (t == TileType.HERO_NEXUS) {
-                renderer.renderMessage(m.getName() +
-                        " has reached the Hero Nexus! Monsters win!");
+            Tile t = world.getTile(p.getRow(), p.getCol());
+            if (t.getType() == TileType.HERO_NEXUS) {
+                renderer.renderMessage("Monsters reach the Hero Nexus! Monsters win!");
                 gameOver = true;
                 return;
             }
         }
-    }
 
-    // ------------------------------------------------------------
-    // Shared helpers (inventory, range, etc.)
-    // ------------------------------------------------------------
-
-    private void renderInventory(Hero hero) {
-        List<Item> items = hero.getInventory().getItems();
-        if (items.isEmpty()) {
-            renderer.renderMessage(hero.getName() + " has no items.");
-            return;
-        }
-        renderer.renderMessage(hero.getName() + "'s inventory:");
-        for (int i = 0; i < items.size(); i++) {
-            Item it = items.get(i);
-            renderer.renderMessage("  " + (i + 1) + ") " +
-                    it.getName() + " (Lv " + it.getRequiredLevel() +
-                    ", Price " + it.getPrice() + ")");
+        if (!hasLivingHeroes()) {
+            renderer.renderMessage("All heroes are dead. Monsters win!");
+            gameOver = true;
         }
     }
 
