@@ -1,7 +1,16 @@
 package core;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
+import battle.Battle;
+import battle.BattleSupport;
+import battle.CombatResolver;
+import battle.RewardService;
 import characters.Hero;
 import characters.Monster;
 import config.GameBalance;
@@ -380,15 +389,19 @@ public class ValorGameEngine {
             return;
         }
 
-        Monster target = adjacent.get(choice);
-        int before = target.getHP();
-        target.takeDamage(h.basicAttackDamage());
-        int after = target.getHP();
-        int dealt = before - after;
-        if (dealt < 0) dealt = 0;
+        Monster target = targetsInRange.get(choice);
+        TileType tileType = world.getTile(heroPos.getRow(), heroPos.getCol()).getType();
+        int effective = CombatResolver.computeHeroAttackDamage(hero, target, tileType);
 
-        renderer.renderMessage(h.getName() + " attacks " +
-                target.getName() + " for " + dealt + " damage.");
+        renderer.renderMessage(hero.getName() +
+                " attacked " + target.getName() +
+                " for " + effective + " damage.");
+
+        if (target.isFainted()) {
+            renderer.renderMessage(target.getName() + " has been defeated!");
+            RewardService.rewardForMonsterKill(heroes, target);
+            renderKillRewards(target);
+        }
     }
 
     private void handleCastSpell(Hero h) {
@@ -456,23 +469,24 @@ public class ValorGameEngine {
         Position tp = heroPositions.get(targetHero);
         int targetLane = laneIndex(tp);
 
-        // Candidate dest squares: 4 neighbors of target hero
-        List<Position> possible = new ArrayList<Position>();
-        int[][] deltas = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
-        int size = world.getSize();
+        // Spend mana and cast
+        hero.restoreMana(-spell.getManaCost());
+        TileType tileType = world.getTile(heroPos.getRow(), heroPos.getCol()).getType();
+        int effective = CombatResolver.computeSpellDamage(hero, target, spell, tileType);
 
-        for (int[] d : deltas) {
-            int nr = tp.getRow() + d[0];
-            int nc = tp.getCol() + d[1];
-            if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
-
-            Position dest = new Position(nr, nc);
+        renderer.renderMessage(hero.getName() + " casts " +
+                spell.getName() + " on " + target.getName() +
+                " for " + effective + " damage.");
 
             // Must be in the target hero's lane
             if (laneIndex(dest) != targetLane) continue;
 
-            // Cannot be ahead of target hero (must not be closer to monster Nexus)
-            if (nr < tp.getRow()) continue;
+        if (target.isFainted()) {
+            renderer.renderMessage(target.getName() + " has been defeated!");
+            RewardService.rewardForMonsterKill(heroes, target);
+            renderKillRewards(target);
+        }
+    }
 
             Tile tile = world.getTile(nr, nc);
             if (!tile.isAccessible()) continue;
@@ -600,23 +614,20 @@ public class ValorGameEngine {
         return null;
     }
 
-    private void monsterAttack(Monster m, Hero target) {
-        int raw = m.getDamage();
-        int reduced = raw - target.getArmorReduction();
-        if (reduced < 0) reduced = 0;
-
-        if (target.tryDodge()) {
-            renderer.renderMessage(target.getName() + " dodges " + m.getName() + "'s attack!");
+    private void attackHero(Monster monster, Hero target) {
+        Position targetPos = heroPositions.get(target);
+        TileType tileType = TileType.COMMON;
+        if (targetPos != null && world.isInside(targetPos)) {
+            tileType = world.getTile(targetPos.getRow(), targetPos.getCol()).getType();
+        }
+        int dealt = CombatResolver.computeMonsterAttackDamage(monster, target, tileType);
+        if (dealt == 0) {
+            renderer.renderMessage(target.getName() +
+                    " dodged the attack from " + monster.getName() + "!");
             return;
         }
 
-        int before = target.getHP();
-        target.takeDamage(reduced);
-        int after = target.getHP();
-        int dealt = before - after;
-        if (dealt < 0) dealt = 0;
-
-        renderer.renderMessage(m.getName() + " attacks " +
+        renderer.renderMessage(monster.getName() + " attacked " +
                 target.getName() + " for " + dealt + " damage.");
 
         if (target.isFainted()) {
@@ -730,28 +741,38 @@ public class ValorGameEngine {
         }
     }
 
-    private void respawnDeadHeroesAtStartOfNextRound() {
+    private void endOfRound() {
+        // Respawn fainted heroes at their nexus
         for (Hero h : heroes) {
-            if (!h.isFainted()) continue;
-            Position spawn = heroSpawnPositions.get(h);
-            if (spawn == null) continue;
+            if (h.isFainted()) {
+                Position spawn = heroSpawnPositions.get(h);
+                if (spawn != null) {
+                    heroPositions.put(h, new Position(spawn.getRow(), spawn.getCol()));
+                }
+                BattleSupport.fullyRestore(h);
+                renderer.renderMessage(h.getName() + " is revived at their Hero Nexus!");
+            }
+        }
 
-            h.heal(h.getMaxHP()); // fully restore HP
-            h.restoreMana(h.getMaxMana()); // restore MP
-            heroPositions.put(h, new Position(spawn.getRow(), spawn.getCol()));
-            renderer.renderMessage(h.getName() +
-                    " respawns at their Nexus at (" +
-                    spawn.getRow() + ", " + spawn.getCol() + ").");
+        // End-of-round recovery for living heroes
+        BattleSupport.recoverHeroesEndOfRound(heroes, GameBalance.END_OF_ROUND_RECOVER_FRACTION);
+
+        // Simple recovery for monsters mirrors heroes' fraction
+        for (Monster m : monsters) {
+            if (!m.isFainted()) {
+                int healAmount = (int) (m.getMaxHP() * GameBalance.END_OF_ROUND_RECOVER_FRACTION);
+                m.heal(healAmount);
+            }
         }
     }
 
-    private void endOfRoundRegen() {
-        for (Hero h : heroes) {
-            if (h.isFainted()) continue;
-            int hpRegen = (int)(h.getMaxHP() * ROUND_REGEN_FRACTION);
-            int mpRegen = (int)(h.getMaxMana() * ROUND_REGEN_FRACTION);
-            h.heal(hpRegen);
-            h.restoreMana(mpRegen);
+        // New monster wave and small reward every MONSTER_WAVE_PERIOD rounds
+        if (roundCount > 0 && roundCount % MONSTER_WAVE_PERIOD == 0) {
+            spawnMonsterWave();
+            RewardService.rewardEndOfWave(heroes);
+            renderer.renderMessage("End-of-wave reward: +" +
+                    GameBalance.END_OF_WAVE_GOLD + " gold and +" +
+                    GameBalance.END_OF_WAVE_XP + " XP to each hero.");
         }
     }
 
@@ -834,5 +855,18 @@ public class ValorGameEngine {
             if (!h.isFainted()) return true;
         }
         return false;
+    }
+
+    // -------------------------------------------------------------
+    // Reward messaging helpers
+    // -------------------------------------------------------------
+
+    private void renderKillRewards(Monster target) {
+        if (target == null) return;
+        int goldReward = Math.max(GameBalance.GOLD_PER_MONSTER_LEVEL * target.getLevel(),
+                GameBalance.GOLD_FALLBACK_PER_MONSTER);
+        int xpReward = Math.max(GameBalance.XP_PER_MONSTER_LEVEL * target.getLevel(),
+                GameBalance.XP_FALLBACK_PER_MONSTER);
+        renderer.renderMessage("Each hero gains +" + goldReward + " gold and +" + xpReward + " XP for the kill.");
     }
 }
