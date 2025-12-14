@@ -35,9 +35,6 @@ import world.World;
  */
 public class ValorGameEngine implements Battle {
 
-    // How often to spawn a new wave of monsters
-    private static final int MONSTER_WAVE_PERIOD = 6;
-
     private final World world;
     private final List<Hero> heroes;
     private final Map<Hero, Position> heroPositions;
@@ -55,6 +52,7 @@ public class ValorGameEngine implements Battle {
     private final MonsterFactory monsterFactory;
     private final ItemFactory itemFactory;
     private final Random random;
+    private final int monsterWavePeriod;
 
     private int roundCount;
     private boolean gameOver;
@@ -64,7 +62,8 @@ public class ValorGameEngine implements Battle {
     public ValorGameEngine(World world,
                            List<Hero> heroes,
                            Renderer renderer,
-                           InputHandler input) {
+                           InputHandler input,
+                           int monsterWavePeriod) {
         this.world = world;
         this.heroes = heroes;
         this.renderer = renderer;
@@ -82,6 +81,7 @@ public class ValorGameEngine implements Battle {
         this.monsterFactory = new MonsterFactory();
         this.itemFactory = new ItemFactory();
         this.random = new Random();
+        this.monsterWavePeriod = monsterWavePeriod;
 
         this.roundCount = 1;
         this.gameOver = false;
@@ -343,7 +343,7 @@ public class ValorGameEngine implements Battle {
         if (target.isFainted()) {
             renderer.renderMessage(target.getName() + " has been defeated!");
             // Simple XP reward: proportional to monster level
-            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL;
+            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL_VALOR;
             hero.gainExperience(xp);
             int gold = target.getLevel() * 500;
             hero.addGold(gold);
@@ -451,12 +451,9 @@ public class ValorGameEngine implements Battle {
         logAction(hero.getName() + " casts " + spell.getName() +
                 " on " + target.getName() + " for " + effective + " damage.");
 
-        // Single-use spell
-        hero.getInventory().remove(spell);
-
         if (target.isFainted()) {
             renderer.renderMessage(target.getName() + " has been defeated!");
-            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL;
+            int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL_VALOR;
             hero.gainExperience(xp);
             int gold = target.getLevel() * 500;
             hero.addGold(gold);
@@ -868,16 +865,8 @@ public class ValorGameEngine implements Battle {
             }
         }
 
-        // Simple 10% HP recovery for monsters
-        for (Monster m : monsters) {
-            if (!m.isFainted()) {
-                int healAmount = (int) (m.getMaxHP() * 0.1);
-                m.heal(healAmount);
-            }
-        }
-
         // New monster wave every MONSTER_WAVE_PERIOD rounds
-        if (roundCount > 0 && roundCount % MONSTER_WAVE_PERIOD == 0) {
+        if (roundCount > 0 && roundCount % monsterWavePeriod == 0) {
             spawnMonsterWave();
             logAction("A new wave of monsters appeared.");
         }

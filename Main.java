@@ -52,7 +52,23 @@ public class Main {
             engine.run();
         } else {
             World world = World.createValorWorld();
-            ValorGameEngine valorEngine = new ValorGameEngine(world, party, renderer, input);
+            renderer.renderMessage("Choose difficulty for monster waves:");
+            renderer.renderMessage("  1) Easy (wave every 6 rounds)");
+            renderer.renderMessage("  2) Normal (wave every 4 rounds)");
+            renderer.renderMessage("  3) Hard (wave every 2 rounds)");
+            int wavePeriod = 6;
+            int diff = 0;
+            while (diff < 1 || diff > 3) {
+                diff = input.readInt();
+                switch (diff) {
+                    case 1: wavePeriod = 6; break;
+                    case 2: wavePeriod = 4; break;
+                    case 3: wavePeriod = 2; break;
+                    default:
+                        renderer.renderMessage("Please choose 1, 2, or 3.");
+                }
+            }
+            ValorGameEngine valorEngine = new ValorGameEngine(world, party, renderer, input, wavePeriod);
             valorEngine.run();
         }
     }

@@ -9,6 +9,7 @@ import io.Renderer;
 import items.Armor;
 import items.Item;
 import items.Potion;
+import items.Spell;
 import items.Weapon;
 
 public class MarketController {
@@ -83,6 +84,7 @@ public class MarketController {
             if (item instanceof Weapon) type = "Weapon";
             else if (item instanceof Armor) type = "Armor";
             else if (item instanceof Potion) type = "Potion";
+            else if (item instanceof Spell) type = "Spell";
 
             renderer.renderMessage("  " + (i+1) + ") [" + type + "] " +
                     item.getName() +
@@ -153,6 +155,7 @@ public class MarketController {
             if (it instanceof Weapon) type = "Weapon";
             else if (it instanceof Armor) type = "Armor";
             else if (it instanceof Potion) type = "Potion";
+            else if (it instanceof Spell) type = "Spell";
 
             renderer.renderMessage("  " + (i+1) + ") [" + type + "] " +
                     it.getName() +

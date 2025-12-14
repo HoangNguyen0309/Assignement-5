@@ -8,6 +8,7 @@ import data.ItemFactory;
 import items.Armor;
 import items.Item;
 import items.Potion;
+import items.Spell;
 import items.Weapon;
 import config.GameBalance;
 
@@ -20,7 +21,7 @@ public class Market {
         this.stock = new ArrayList<Item>();
         this.random = new Random();
 
-        // Populate market with a mix of weapons, armor, and potions.
+        // Populate market with a mix of weapons, armor, potions, and spells.
         // Higher level items are rarer by biasing around approxLevel.
         for (int i = 0; i < 10; i++) {
             int roll = random.nextInt(100);
@@ -35,7 +36,7 @@ public class Market {
                 targetLevel = approxLevel + 2;  // 10% higher-level (rare)
             }
 
-            int typeRoll = random.nextInt(3);
+            int typeRoll = random.nextInt(4);
             Item item = null;
             if (typeRoll == 0) {
                 Weapon w = itemFactory.getRandomWeaponForLevel(targetLevel);
@@ -43,9 +44,12 @@ public class Market {
             } else if (typeRoll == 1) {
                 Armor a = itemFactory.getRandomArmorForLevel(targetLevel);
                 item = a;
-            } else {
+            } else if (typeRoll == 2) {
                 Potion p = itemFactory.getRandomPotionForLevel(targetLevel);
                 item = p;
+            } else {
+                Spell s = itemFactory.getRandomSpellForLevel(targetLevel);
+                item = s;
             }
 
             if (item != null) {

@@ -58,6 +58,8 @@ public final class GameBalance {
     // ----------------------------
 
     public static final int XP_PER_MONSTER_LEVEL    = 20;
+    // Legends of Valor: XP reward per monster level
+    public static final int XP_PER_MONSTER_LEVEL_VALOR = 2;
     public static final int XP_FALLBACK_PER_MONSTER = 10;
 
     public static final double CONTRIBUTION_TAKEN_WEIGHT  = 0.5;

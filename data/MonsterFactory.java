@@ -85,7 +85,7 @@ public class MonsterFactory {
      *  - Use monsters whose level is close to the party's average level.
      *  - Start with range [avg-1, avg+1]; if empty, widen gradually.
      */
-    public List<Monster> spawnMonstersForBattle(int count, int partyAverageLevel) {
+    public List<Monster> spawnMonstersForBattle(int count, int targetLevel) {
         ensureLoaded();
 
         /**
@@ -100,7 +100,7 @@ public class MonsterFactory {
         }
          **/
 
-        int avg = Math.max(1, partyAverageLevel);
+        int avg = Math.max(1, targetLevel);
 
         // Gradually widen the allowed level band until we have candidates.
         List<MonsterTemplate> candidates = new ArrayList<MonsterTemplate>();
@@ -126,22 +126,31 @@ public class MonsterFactory {
         List<Monster> monsters = new ArrayList<Monster>();
         for (int i = 0; i < count; i++) {
             MonsterTemplate t = candidates.get(random.nextInt(candidates.size()));
-            monsters.add(instantiateMonster(t));
+            monsters.add(instantiateMonster(t, targetLevel));
         }
         return monsters;
     }
 
     private Monster instantiateMonster(MonsterTemplate t) {
-        /** int hp = computeHp(t.level); **/
-        return new Monster(t.name, t.level, t.damage, t.defense, t.dodgeChance);
+        return instantiateMonster(t, t.level);
     }
 
     /**
-     * Simple HP formula – you can tune it.
-     * Here: base 100 + 50 * level
+     * Create a monster based on a template, but force the level to targetLevel
+     * and scale its stats proportionally.
      */
-    private int computeHp(int level) {
-        return GameBalance.monsterHpForLevel(level);
+    private Monster instantiateMonster(MonsterTemplate t, int targetLevel) {
+        int baseLevel = Math.max(1, t.level);
+        int level = Math.max(1, targetLevel);
+        double scale = level / (double) baseLevel;
+
+        int scaledDamage  = Math.max(1, (int) Math.round(t.damage * scale));
+        int scaledDefense = Math.max(0, (int) Math.round(t.defense * scale));
+        int scaledDodge   = Math.min(90, Math.max(0, (int) Math.round(t.dodgeChance * scale)));
+
+        Monster m = new Monster(t.name, level, scaledDamage, scaledDefense, scaledDodge);
+        // HP is derived from GameBalance using the forced level inside Monster constructor
+        return m;
     }
 
 }
