@@ -14,52 +14,74 @@ import core.valor.ValorContext;
 
 /**
  * Monster AI:
- * 1) If hero in range -> attack
- * 2) Else BFS pathfind to nearest hero in SAME lane (4-neighbor moves), respecting obstacles/monsters
- * 3) Else fallback: move forward (down 1)
+ * - All monsters act each monster phase.
+ * - If hero in range -> attack
+ * - Else BFS pathfind (DOWN/LEFT/RIGHT only) to nearest hero in SAME lane
+ * - If no path: try DOWN, else sidestep LEFT/RIGHT to avoid obstacle, else do nothing
  *
- * NOTE: BFS uses string keys "r,c" so it does NOT require Position.equals/hashCode.
+ * BFS uses string keys "r,c" so it does NOT require Position.equals/hashCode.
  */
 public class MonsterSystem {
 
     public void takeTurn(ValorContext ctx) {
+        // IMPORTANT: do NOT return after first monster.
         for (Monster monster : ctx.monsters) {
             if (monster.isFainted()) continue;
 
             Position start = ctx.monsterPositions.get(monster);
             if (start == null) continue;
 
-            // 1) Attack hero in range
+            // 1) Attack if any hero in range
             Hero target = findHeroInRange(ctx, start);
             if (target != null) {
                 attack(ctx, monster, target);
-                return;
+                continue; // next monster
             }
 
-            // 2) Pathfind
+            // 2) Pathfind (prefers forward progress; no "up" moves)
             Position step = nextStepTowardNearestHeroSameLane(ctx, monster, start);
-            if (step != null
-                    && ctx.world.isAccessible(step)
-                    && !ValorRules.isOccupiedByMonster(ctx, step, monster)
-                    && !ValorRules.wouldMovePastEnemy(ctx, start, step, false)) {
-
+            if (step != null && canMoveTo(ctx, monster, start, step)) {
                 ctx.monsterPositions.put(monster, step);
                 ctx.renderer.renderMessage(monster.getName() + " moves to (" + step.getRow() + ", " + step.getCol() + ").");
-                return;
+                continue;
             }
 
-            // 3) Fallback forward
-            Position forward = new Position(start.getRow() + 1, start.getCol());
-            if (ValorRules.isInsideBoard(ctx, forward.getRow(), forward.getCol())
-                    && ctx.world.isAccessible(forward)
-                    && !ValorRules.isOccupiedByMonster(ctx, forward, monster)
-                    && !ValorRules.wouldMovePastEnemy(ctx, start, forward, false)) {
-
-                ctx.monsterPositions.put(monster, forward);
-                ctx.renderer.renderMessage(monster.getName() + " moves to (" + forward.getRow() + ", " + forward.getCol() + ").");
+            // 3) Fallback: try forward first
+            Position down = new Position(start.getRow() + 1, start.getCol());
+            if (canMoveTo(ctx, monster, start, down)) {
+                ctx.monsterPositions.put(monster, down);
+                ctx.renderer.renderMessage(monster.getName() + " moves to (" + down.getRow() + ", " + down.getCol() + ").");
+                continue;
             }
-            return;
+
+            // 4) If forward blocked by obstacle/monster, sidestep left/right within lane to go around
+            Position left = new Position(start.getRow(), start.getCol() - 1);
+            if (canMoveTo(ctx, monster, start, left) && ctx.world.sameLane(start, left)) {
+                ctx.monsterPositions.put(monster, left);
+                ctx.renderer.renderMessage(monster.getName() + " sidesteps to (" + left.getRow() + ", " + left.getCol() + ").");
+                continue;
+            }
+
+            Position right = new Position(start.getRow(), start.getCol() + 1);
+            if (canMoveTo(ctx, monster, start, right) && ctx.world.sameLane(start, right)) {
+                ctx.monsterPositions.put(monster, right);
+                ctx.renderer.renderMessage(monster.getName() + " sidesteps to (" + right.getRow() + ", " + right.getCol() + ").");
+                continue;
+            }
+
+            // else: stuck
         }
+    }
+
+    private boolean canMoveTo(ValorContext ctx, Monster monster, Position from, Position to) {
+        if (to == null) return false;
+        if (!ValorRules.isInsideBoard(ctx, to.getRow(), to.getCol())) return false;
+        if (!ctx.world.isAccessible(to)) return false;
+        if (ValorRules.isOccupiedByMonster(ctx, to, monster)) return false;
+        if (ValorRules.wouldMovePastEnemy(ctx, from, to, false)) return false;
+        // do not move onto a hero tile
+        if (isHeroTile(ctx, to)) return false;
+        return true;
     }
 
     private Hero findHeroInRange(ValorContext ctx, Position monsterPos) {
@@ -86,8 +108,12 @@ public class MonsterSystem {
         ctx.renderer.renderMessage(monster.getName() + " attacked " + target.getName() + " for " + reduced + " damage.");
     }
 
+    /**
+     * BFS in the monster's lane to nearest hero.
+     * Allowed moves for monsters: DOWN, LEFT, RIGHT (no UP), so they don't "backtrack".
+     * Returns the next step (one move) or null.
+     */
     private Position nextStepTowardNearestHeroSameLane(ValorContext ctx, Monster monster, Position start) {
-        // targets: heroes in same lane
         List<Position> targets = new ArrayList<Position>();
         for (Hero h : ctx.heroes) {
             if (h.isFainted()) continue;
@@ -96,7 +122,6 @@ public class MonsterSystem {
         }
         if (targets.isEmpty()) return null;
 
-        // BFS
         Deque<Position> q = new ArrayDeque<Position>();
         Map<String, String> prev = new HashMap<String, String>();
         Map<String, Position> posByKey = new HashMap<String, Position>();
@@ -118,15 +143,15 @@ public class MonsterSystem {
                 break;
             }
 
-            for (Position nb : neighbors4(cur)) {
+            for (Position nb : monsterNeighbors(cur)) { // DOWN/LEFT/RIGHT only
                 if (!ValorRules.isInsideBoard(ctx, nb.getRow(), nb.getCol())) continue;
                 if (!ctx.world.sameLane(start, nb)) continue;
                 if (!ctx.world.isAccessible(nb)) continue;
 
-                // block monsters
+                // block other monsters
                 if (!ValorRules.samePos(nb, start) && ValorRules.isOccupiedByMonster(ctx, nb, monster)) continue;
 
-                // do not move through heroes (only allow hero tile as the goal)
+                // don't path "through" heroes (only allow hero tile as the goal)
                 if (!isTarget(nb, targets) && isHeroTile(ctx, nb)) continue;
 
                 String nbKey = key(nb);
@@ -141,7 +166,7 @@ public class MonsterSystem {
 
         if (foundKey == null) return null;
 
-        // reconstruct first step from start -> found
+        // reconstruct first step from start -> foundKey
         String curKey = foundKey;
         String pKey = prev.get(curKey);
         if (pKey == null) return null;
@@ -153,8 +178,17 @@ public class MonsterSystem {
 
         Position step = posByKey.get(curKey);
         if (step == null) return null;
-        if (isHeroTile(ctx, step)) return null; // safety
+        if (isHeroTile(ctx, step)) return null;
         return step;
+    }
+
+    private List<Position> monsterNeighbors(Position p) {
+        // DOWN first so BFS naturally prefers progress
+        List<Position> n = new ArrayList<Position>(3);
+        n.add(new Position(p.getRow() + 1, p.getCol()));     // down
+        n.add(new Position(p.getRow(), p.getCol() - 1));     // left
+        n.add(new Position(p.getRow(), p.getCol() + 1));     // right
+        return n;
     }
 
     private boolean isHeroTile(ValorContext ctx, Position p) {
@@ -171,15 +205,6 @@ public class MonsterSystem {
             if (ValorRules.samePos(t, p)) return true;
         }
         return false;
-    }
-
-    private List<Position> neighbors4(Position p) {
-        List<Position> n = new ArrayList<Position>(4);
-        n.add(new Position(p.getRow() - 1, p.getCol()));
-        n.add(new Position(p.getRow() + 1, p.getCol()));
-        n.add(new Position(p.getRow(), p.getCol() - 1));
-        n.add(new Position(p.getRow(), p.getCol() + 1));
-        return n;
     }
 
     private String key(Position p) {
