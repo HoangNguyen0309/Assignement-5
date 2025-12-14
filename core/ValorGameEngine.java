@@ -53,6 +53,7 @@ public class ValorGameEngine implements Battle {
     private final ItemFactory itemFactory;
     private final Random random;
     private final int monsterWavePeriod;
+    private final Map<Integer, Integer> laneMaxLevels = new HashMap<Integer, Integer>(); // laneIndex -> max hero level
 
     private int roundCount;
     private boolean gameOver;
@@ -87,6 +88,7 @@ public class ValorGameEngine implements Battle {
         this.gameOver = false;
 
         initializeHeroPositions();
+        updateLaneMaxLevels();
         assignHeroCodes();
         spawnInitialMonsters();
     }
@@ -349,6 +351,7 @@ public class ValorGameEngine implements Battle {
             hero.addGold(gold);
             renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
             logAction(target.getName() + " defeated by " + hero.getName() + " (+" + xp + " XP, +" + gold + " gold).");
+            updateLaneMaxLevels();
         }
         return true;
     }
@@ -459,6 +462,7 @@ public class ValorGameEngine implements Battle {
             hero.addGold(gold);
             renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
             logAction(target.getName() + " defeated by " + hero.getName() + " (+" + xp + " XP, +" + gold + " gold).");
+            updateLaneMaxLevels();
         }
         return true;
     }
@@ -547,7 +551,17 @@ public class ValorGameEngine implements Battle {
 
         MarketTile mTile = (MarketTile) tile;
         if (mTile.getMarket() == null) {
-            mTile.setMarket(new Market(itemFactory, hero.getLevel()));
+            int lane = laneIndexForHero(hero);
+            int laneLevel = getLaneMaxLevel(lane);
+            mTile.setMarket(new Market(itemFactory, laneLevel));
+        } else {
+            int lane = laneIndexForHero(hero);
+            int laneLevel = getLaneMaxLevel(lane);
+            Market market = mTile.getMarket();
+            if (laneLevel > market.getBaseLevel()) {
+                market.restock(itemFactory, laneLevel);
+                renderer.renderMessage("The market has refreshed its stock for your lane.");
+            }
         }
 
         // You can let the whole party shop, or just this hero. Reuse existing API:
@@ -1019,6 +1033,7 @@ public class ValorGameEngine implements Battle {
         hero.equipWeapon(selected, useTwoHands);
         renderer.renderMessage(hero.getName() + " equipped weapon: " +
                 selected.getName() + (useTwoHands ? " (using both hands)" : ""));
+        updateLaneMaxLevels();
         return true;
     }
 
@@ -1061,6 +1076,7 @@ public class ValorGameEngine implements Battle {
 
         hero.equipArmor(selected);
         renderer.renderMessage(hero.getName() + " equipped armor: " + selected.getName());
+        updateLaneMaxLevels();
         return true;
     }
 
@@ -1235,6 +1251,31 @@ public class ValorGameEngine implements Battle {
             }
         }
         return null;
+    }
+
+    private int laneIndexForHero(Hero hero) {
+        Position spawn = heroSpawnPositions.get(hero);
+        if (spawn == null) return -1;
+        return world.laneIndexForCol(spawn.getCol());
+    }
+
+    private void updateLaneMaxLevels() {
+        laneMaxLevels.clear();
+        for (Hero h : heroes) {
+            Position spawn = heroSpawnPositions.get(h);
+            if (spawn == null) continue;
+            int lane = world.laneIndexForCol(spawn.getCol());
+            if (lane < 0) continue;
+            int cur = laneMaxLevels.containsKey(lane) ? laneMaxLevels.get(lane) : 0;
+            if (h.getLevel() > cur) {
+                laneMaxLevels.put(lane, h.getLevel());
+            }
+        }
+    }
+
+    private int getLaneMaxLevel(int laneIndex) {
+        Integer val = laneMaxLevels.get(laneIndex);
+        return val == null ? 1 : val;
     }
 
     private void clearTerrainEffects(Hero hero) {

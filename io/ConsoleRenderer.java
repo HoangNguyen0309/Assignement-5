@@ -116,15 +116,32 @@ public class ConsoleRenderer implements Renderer {
                         }
                     }
 
+                    // Precompute monster label chars to avoid overlap when ids grow
+                    char monsterTens = ' ';
+                    char monsterOnes = ' ';
+                    if (monsterMark != null) {
+                        String digits = monsterMark.length() > 1 ? monsterMark.substring(1) : "";
+                        if (!digits.isEmpty()) {
+                            monsterOnes = digits.charAt(digits.length() - 1);
+                            if (digits.length() > 1) {
+                                monsterTens = digits.charAt(digits.length() - 2);
+                            }
+                        } else {
+                            monsterOnes = '?';
+                        }
+                    }
+
                     // Build 4x4 cell
                     for (int ic = 0; ic < cellWidth; ic++) {
                         String reset = "\u001B[0m";
                         if (ir == 0 && ic == 0) {
                             line.append(color).append(terrainChar).append(reset);
-                        } else if (monsterMark != null && ir == 0 && ic == 2) {
+                        } else if (monsterMark != null && ir == 1 && ic == 1) {
                             line.append('m');
-                        } else if (monsterMark != null && ir == 0 && ic == 3) {
-                            line.append(monsterMark.substring(1,2));
+                        } else if (monsterMark != null && ir == 1 && ic == 2) {
+                            line.append(monsterTens);
+                        } else if (monsterMark != null && ir == 1 && ic == 3) {
+                            line.append(monsterOnes);
                         } else if (heroMark != null && ir == 3 && ic == 2) {
                             line.append('h');
                         } else if (heroMark != null && ir == 3 && ic == 3) {

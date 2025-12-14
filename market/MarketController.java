@@ -114,6 +114,7 @@ public class MarketController {
         }
 
         buyer.getInventory().add(selected);
+        stock.remove(selected); // finite stock: remove after purchase
         renderer.renderMessage(buyer.getName() + " bought " +
                 selected.getName() + " for " + price + " gold.");
     }
