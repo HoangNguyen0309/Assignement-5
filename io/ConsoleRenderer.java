@@ -18,17 +18,12 @@ public class ConsoleRenderer implements Renderer {
     @Override
     public void renderWorld(World world,
                             Map<Hero, Position> heroPositions,
-                            Map<Monster, Position> monsterPositions,
-                            Map<Hero, String> heroCodes,
-                            Map<Monster, String> monsterCodes) {
+                            Map<Monster, Position> monsterPositions) {
         int size = world.getSize();
         System.out.println("=== LEGENDS OF VALOR BOARD ===");
 
         int cellWidth  = 4; // interior characters
         int cellHeight = 4; // interior characters
-
-        // Use provided monster codes
-        Map<Monster, String> monsterIds = monsterCodes;
 
         for (int r = 0; r < size; r++) {
             // Top border for this row
@@ -49,86 +44,43 @@ public class ConsoleRenderer implements Renderer {
                     line.append("|");
 
                     Tile tile = world.getTile(r, c);
-                    TileType type = tile.getType();
-                    // Foreground colors for terrain
-                    char terrainChar;
-                    String color = "";
-                    switch (type) {
+                    char baseChar;
+                    switch (tile.getType()) {
+                        case INACCESSIBLE:
+                            baseChar = 'X';
+                            break;
                         case HERO_NEXUS:
-                            terrainChar = 'H';
-                            color = "\u001B[34m"; // blue text
+                            baseChar = 'H';
                             break;
                         case MONSTER_NEXUS:
-                            terrainChar = 'M';
-                            color = "\u001B[31m"; // red text
+                            baseChar = 'M';
                             break;
                         case BUSH:
-                            terrainChar = 'B';
-                            color = "\u001B[32m"; // green text
+                            baseChar = 'B';
                             break;
                         case CAVE:
-                            terrainChar = 'C';
-                            color = "\u001B[35m"; // magenta text
+                            baseChar = 'C';
                             break;
                         case KOULOU:
-                            terrainChar = 'K';
-                            color = "\u001B[33m"; // yellow text
+                            baseChar = 'K';
                             break;
                         case OBSTACLE:
-                            terrainChar = 'O';
-                            color = "\u001B[90m"; // gray text
-                            break;
-                        case INACCESSIBLE:
-                            terrainChar = 'X';
-                            color = "\u001B[31m"; // red text
+                            baseChar = 'O';
                             break;
                         default:
-                            terrainChar = 'P';
-                            color = "";
+                            baseChar = 'P'; // Plain/common
                             break;
                     }
 
-                    // Find hero/monster on this tile
-                    String heroMark = null;
-                    for (Map.Entry<Hero, Position> e : heroPositions.entrySet()) {
-                        Position p = e.getValue();
-                        if (p != null && p.getRow() == r && p.getCol() == c) {
-                            if (heroCodes != null) {
-                                heroMark = heroCodes.get(e.getKey());
-                            }
-                            if (heroMark == null) {
-                                heroMark = "h?";
-                            }
-                            break;
-                        }
-                    }
-                    String monsterMark = null;
-                    for (Map.Entry<Monster, Position> e : monsterPositions.entrySet()) {
-                        Position p = e.getValue();
-                        if (p != null && p.getRow() == r && p.getCol() == c) {
-                            if (monsterIds != null) {
-                                monsterMark = monsterIds.get(e.getKey());
-                            }
-                            if (monsterMark == null) {
-                                monsterMark = "m?";
-                            }
-                            break;
-                        }
-                    }
+                    // Overlay heroes / monsters
+                    char cellChar = getOccupantChar(r, c, heroPositions, monsterPositions, baseChar);
 
-                    // Build 4x4 cell
+                    int centerRow = 1; // which interior row to draw symbol on
+                    int centerCol = 1; // which interior col to draw symbol on
+
                     for (int ic = 0; ic < cellWidth; ic++) {
-                        String reset = "\u001B[0m";
-                        if (ir == 0 && ic == 0) {
-                            line.append(color).append(terrainChar).append(reset);
-                        } else if (monsterMark != null && ir == 0 && ic == 2) {
-                            line.append('m');
-                        } else if (monsterMark != null && ir == 0 && ic == 3) {
-                            line.append(monsterMark.substring(1,2));
-                        } else if (heroMark != null && ir == 3 && ic == 2) {
-                            line.append('h');
-                        } else if (heroMark != null && ir == 3 && ic == 3) {
-                            line.append(heroMark.substring(1,2));
+                        if (ir == centerRow && ic == centerCol) {
+                            line.append(cellChar);
                         } else {
                             line.append(' ');
                         }
@@ -151,14 +103,39 @@ public class ConsoleRenderer implements Renderer {
         System.out.println(bottom.toString());
 
         System.out.println("Legend:");
-        System.out.println("  H (blue text) = Hero Nexus");
-        System.out.println("  M (red text)  = Monster Nexus");
-        System.out.println("  B/C/K = Bush/Cave/Koulou (colored text)");
-        System.out.println("  O = Obstacle (gray text)");
+        System.out.println("  H = Hero Nexus");
+        System.out.println("  M = Monster Nexus");
         System.out.println("  P = Plain tile");
-        System.out.println("  X = Inaccessible (red text)");
-        System.out.println("  m1/m2/m3 at top-right, h1/h2/h3 at bottom-right of a cell");
+        System.out.println("  X = Inaccessible");
+        System.out.println("  B/C/K = Bush/Cave/Koulou");
+        System.out.println("  O = Obstacle");
+        System.out.println("  h = Hero");
+        System.out.println("  m = Monster");
         System.out.println();
+    }
+
+    private static class CharacterCell {
+        char ch;
+        CharacterCell(char ch) { this.ch = ch; }
+    }
+
+    private char getOccupantChar(int row, int col,
+                                 Map<Hero, Position> heroPositions,
+                                 Map<Monster, Position> monsterPositions,
+                                 char baseChar) {
+        for (Map.Entry<Hero, Position> e : heroPositions.entrySet()) {
+            Position p = e.getValue();
+            if (p != null && p.getRow() == row && p.getCol() == col) {
+                return 'h'; // later: H1/H2/H3 if you want
+            }
+        }
+        for (Map.Entry<Monster, Position> e : monsterPositions.entrySet()) {
+            Position p = e.getValue();
+            if (p != null && p.getRow() == row && p.getCol() == col) {
+                return 'm';
+            }
+        }
+        return baseChar;
     }
 
     public void renderWorld(World world) {
@@ -238,16 +215,10 @@ public class ConsoleRenderer implements Renderer {
     }
 
     public void renderHeroStats(List<Hero> heroes) {
-        renderHeroStats(heroes, null);
-    }
-
-    public void renderHeroStats(List<Hero> heroes, Map<Hero, String> heroCodes) {
         System.out.println("=== HERO PARTY ===");
         for (Hero h : heroes) {
-            String code = heroCodes != null ? heroCodes.get(h) : null;
-            String name = h.getName() + (code != null ? " (" + code + ")" : "");
             System.out.println(
-                    name +
+                    h.getName() +
                             " | Lv " + h.getLevel() +
                             " | HP " + h.getHP() + "/" + h.getMaxHP() +
                             " | MP " + h.getMana() + "/" + h.getMaxMana()
@@ -290,16 +261,10 @@ public class ConsoleRenderer implements Renderer {
     }
 
     public void renderMonsterStats(List<Monster> monsters) {
-        renderMonsterStats(monsters, null);
-    }
-
-    public void renderMonsterStats(List<Monster> monsters, Map<Monster, String> monsterCodes) {
         System.out.println("=== MONSTERS ===");
         for (Monster m : monsters) {
-            String code = monsterCodes != null ? monsterCodes.get(m) : null;
-            String name = m.getName() + (code != null ? " (" + code + ")" : "");
             System.out.println(
-                    name +
+                    m.getName() +
                             " | Lv " + m.getLevel() +
                             " | HP " + m.getHP() + "/" + m.getMaxHP() +
                             " | DMG " + m.getDamage() +

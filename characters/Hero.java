@@ -229,20 +229,4 @@ public class Hero extends AbstractCharacter {
 
 
     // getters for stats, xp, gold, inventory...
-
-    // Temporary stat adjustments (e.g., terrain buffs)
-    public void adjustStrength(int delta) {
-        strength += delta;
-        if (strength < 0) strength = 0;
-    }
-
-    public void adjustDexterity(int delta) {
-        dexterity += delta;
-        if (dexterity < 0) dexterity = 0;
-    }
-
-    public void adjustAgility(int delta) {
-        agility += delta;
-        if (agility < 0) agility = 0;
-    }
 }

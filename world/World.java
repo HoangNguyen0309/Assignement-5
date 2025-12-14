@@ -57,10 +57,6 @@ public class World {
         return tiles[row][col];
     }
 
-    public void setTile(int row, int col, Tile tile) {
-        tiles[row][col] = tile;
-    }
-
     public boolean move(Direction direction) {
         int row = partyPosition.getRow();
         int col = partyPosition.getCol();
@@ -220,13 +216,13 @@ public class World {
                 }
 
                 // Monster Nexus on top row (one per lane, left column of each lane)
-                if (r == 0 && (c == 0 || c == 1 ||c == 3 || c == 4 || c == 6 || c == 7)) {
+                if (r == 0 && (c == 0 || c == 3 || c == 6)) {
                     tiles[r][c] = new MonsterNexusTile();
                     continue;
                 }
 
                 // Hero Nexus on bottom row (one per lane, left column of each lane)
-                if (r == size - 1 && (c == 0 || c == 1 ||c == 3 || c == 4 || c == 6 || c == 7)) {
+                if (r == size - 1 && (c == 0 || c == 3 || c == 6)) {
                     tiles[r][c] = new HeroNexusTile(null);
                     continue;
                 }
@@ -296,47 +292,24 @@ public class World {
         return type;
     }
 
-    public boolean isHeroNexus(Position p) {
-        if (!isInside(p)) return false;
-        return tiles[p.getRow()][p.getCol()].getType() == TileType.HERO_NEXUS;
-    }
-
-    public boolean isMonsterNexus(Position p) {
-        if (!isInside(p)) return false;
-        return tiles[p.getRow()][p.getCol()].getType() == TileType.MONSTER_NEXUS;
-    }
-
     // -------------------------------------------------------------
     // Valor helpers for engine use
     // -------------------------------------------------------------
 
     public Position getHeroNexusForLane(int laneIndex) {
-        Position[] pair = getHeroNexusColumnsForLane(laneIndex);
-        return pair == null ? null : pair[0];
-    }
-
-    public Position getMonsterNexusForLane(int laneIndex) {
-        Position[] pair = getMonsterNexusColumnsForLane(laneIndex);
-        return pair == null ? null : pair[0];
-    }
-
-    /**
-     * Return both Nexus tiles for a lane (two columns per lane).
-     */
-    public Position[] getHeroNexusColumnsForLane(int laneIndex) {
         switch (laneIndex) {
-            case 0: return new Position[]{ new Position(size - 1, 0), new Position(size - 1, 1) };
-            case 1: return new Position[]{ new Position(size - 1, 3), new Position(size - 1, 4) };
-            case 2: return new Position[]{ new Position(size - 1, 6), new Position(size - 1, 7) };
+            case 0: return new Position(size - 1, 0);
+            case 1: return new Position(size - 1, 3);
+            case 2: return new Position(size - 1, 6);
             default: return null;
         }
     }
 
-    public Position[] getMonsterNexusColumnsForLane(int laneIndex) {
+    public Position getMonsterNexusForLane(int laneIndex) {
         switch (laneIndex) {
-            case 0: return new Position[]{ new Position(0, 0), new Position(0, 1) };
-            case 1: return new Position[]{ new Position(0, 3), new Position(0, 4) };
-            case 2: return new Position[]{ new Position(0, 6), new Position(0, 7) };
+            case 0: return new Position(0, 0);
+            case 1: return new Position(0, 3);
+            case 2: return new Position(0, 6);
             default: return null;
         }
     }
@@ -361,7 +334,7 @@ public class World {
         return laneIndexForCol(a.getCol()) == laneIndexForCol(b.getCol());
     }
 
-    public int laneIndexForCol(int col) {
+    private int laneIndexForCol(int col) {
         if (col == 0 || col == 1) return 0;
         if (col == 3 || col == 4) return 1;
         if (col == 6 || col == 7) return 2;
