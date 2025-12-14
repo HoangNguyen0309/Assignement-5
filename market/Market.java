@@ -16,11 +16,17 @@ public class Market {
 
     private final List<Item> stock;
     private final Random random;
+    private int baseLevel;
 
     public Market(ItemFactory itemFactory, int approxLevel) {
         this.stock = new ArrayList<Item>();
         this.random = new Random();
+        this.baseLevel = approxLevel;
+        populateStock(itemFactory, approxLevel);
+    }
 
+    private void populateStock(ItemFactory itemFactory, int approxLevel) {
+        stock.clear();
         // Populate market with a mix of weapons, armor, potions, and spells.
         // Higher level items are rarer by biasing around approxLevel.
         for (int i = 0; i < 10; i++) {
@@ -58,7 +64,16 @@ public class Market {
         }
     }
 
+    public void restock(ItemFactory itemFactory, int approxLevel) {
+        this.baseLevel = approxLevel;
+        populateStock(itemFactory, approxLevel);
+    }
+
     public List<Item> getStock() {
         return stock;
+    }
+
+    public int getBaseLevel() {
+        return baseLevel;
     }
 }
