@@ -69,7 +69,7 @@ public class Main {
                 }
             }
             ValorGameEngine valorEngine = new ValorGameEngine(world, party, renderer, input, wavePeriod);
-            valorEngine.run();
+            valorEngine.start();
         }
     }
 }
