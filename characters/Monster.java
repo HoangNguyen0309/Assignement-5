@@ -34,6 +34,15 @@ public class Monster extends AbstractCharacter {
         if (dodgeChance < 0) dodgeChance = 0;
     }
 
+    /**
+     * Spell damage bypasses defense/dodge in Valor rules.
+     */
+    public void takeSpellDamage(int amount) {
+        int effective = Math.max(0, amount);
+        this.hp -= effective;
+        if (hp < 0) hp = 0;
+    }
+
     public void takeDamage(int rawDamage) {
         int effective = rawDamage - defense;
         if (effective < 0) effective = 0;

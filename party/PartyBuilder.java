@@ -117,6 +117,8 @@ public class PartyBuilder {
         List<Hero> sorcerers = heroFactory.loadSorcerers();
         List<Hero> paladins  = heroFactory.loadPaladins();
 
+        // laneSlots[0]=上路, [1]=中路, [2]=下路
+        Hero[] laneSlots = new Hero[VALOR_PARTY_SIZE];
         List<Hero> party = new ArrayList<Hero>();
 
         for (int i = 1; i <= VALOR_PARTY_SIZE; i++) {
@@ -169,8 +171,28 @@ public class PartyBuilder {
                 }
             }
 
-            party.add(chosenHero);
+            // 选择 lane，确保唯一
+            int laneChoice = -1;
+            while (laneChoice < 1 || laneChoice > 3 || laneSlots[laneChoice - 1] != null) {
+                renderer.renderMessage("Choose a lane for this hero:");
+                renderer.renderMessage("  1) Top lane");
+                renderer.renderMessage("  2) Mid lane");
+                renderer.renderMessage("  3) Bot lane");
+                if (laneChoice >= 1 && laneChoice <= 3 && laneSlots[laneChoice - 1] != null) {
+                    renderer.renderMessage("That lane is already taken. Choose another.");
+                }
+                laneChoice = input.readInt();
+            }
+
+            laneSlots[laneChoice - 1] = chosenHero;
             pool.remove(chosenHero);
+        }
+
+        // 将英雄按 lane 顺序放入列表：上 / 中 / 下
+        for (Hero h : laneSlots) {
+            if (h != null) {
+                party.add(h);
+            }
         }
 
         return party;

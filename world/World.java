@@ -236,47 +236,45 @@ public class World {
             }
         }
 
-        // Collect interior coordinates to fill (rows 1..size-2, non-wall, non-nexus)
-        List<Position> interior = new ArrayList<Position>();
-        for (int r = 1; r < size - 1; r++) {
-            for (int c = 0; c < size; c++) {
-                if (c == 2 || c == 5) {
-                    continue;
-                }
-                if (tiles[r][c] != null) {
-                    continue;
-                }
-                interior.add(new Position(r, c));
-            }
-        }
-
-        // Ensure each special terrain appears at least once, plus at least one plain
-        List<TileType> mustPlace = new ArrayList<TileType>();
-        mustPlace.add(TileType.BUSH);
-        mustPlace.add(TileType.CAVE);
-        mustPlace.add(TileType.KOULOU);
-        mustPlace.add(TileType.OBSTACLE);
-        mustPlace.add(TileType.COMMON); // guarantee not all buff/obstacle
-
-        Collections.shuffle(interior, random);
-        int idx = 0;
-        for (TileType t : mustPlace) {
-            if (idx >= interior.size()) break;
-            Position p = interior.get(idx++);
-            tiles[p.getRow()][p.getCol()] = new CommonTile(t);
-        }
-
-        // Fill remaining interior with a weighted random mix (bias toward plain)
+        // Per-lane filling to ensure each lane has BUSH/CAVE/KOULOU/OBSTACLE/PLAIN
+        int[][] laneCols = { {0,1}, {3,4}, {6,7} };
         TileType[] pool = new TileType[] {
                 TileType.COMMON, TileType.COMMON, TileType.COMMON,
                 TileType.BUSH, TileType.CAVE, TileType.KOULOU,
                 TileType.OBSTACLE
         };
 
-        while (idx < interior.size()) {
-            Position p = interior.get(idx++);
-            TileType pick = pool[random.nextInt(pool.length)];
-            tiles[p.getRow()][p.getCol()] = new CommonTile(pick);
+        for (int lane = 0; lane < laneCols.length; lane++) {
+            List<Position> lanePositions = new ArrayList<Position>();
+            for (int r = 1; r < size - 1; r++) {
+                for (int cIdx = 0; cIdx < laneCols[lane].length; cIdx++) {
+                    int c = laneCols[lane][cIdx];
+                    if (tiles[r][c] == null) {
+                        lanePositions.add(new Position(r, c));
+                    }
+                }
+            }
+
+            List<TileType> mustPlace = new ArrayList<TileType>();
+            mustPlace.add(TileType.BUSH);
+            mustPlace.add(TileType.CAVE);
+            mustPlace.add(TileType.KOULOU);
+            mustPlace.add(TileType.OBSTACLE);
+            mustPlace.add(TileType.COMMON); // ensure at least one plain
+
+            Collections.shuffle(lanePositions, random);
+            int idx = 0;
+            for (TileType t : mustPlace) {
+                if (idx >= lanePositions.size()) break;
+                Position p = lanePositions.get(idx++);
+                tiles[p.getRow()][p.getCol()] = new CommonTile(t);
+            }
+
+            while (idx < lanePositions.size()) {
+                Position p = lanePositions.get(idx++);
+                TileType pick = pool[random.nextInt(pool.length)];
+                tiles[p.getRow()][p.getCol()] = new CommonTile(pick);
+            }
         }
 
         // Fill any remaining nulls defensively as plain

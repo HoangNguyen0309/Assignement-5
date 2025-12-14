@@ -44,8 +44,8 @@ public class Spell extends AbstractItem implements Consumable {
 
     public int cast(Hero caster, Monster target) {
         int rawDamage = baseDamage + (int)(caster.getDexterity() / GameBalance.SPELL_DEX_DIVISOR);
-        // Let Monster defense handle reduction; pass raw
-        target.takeDamage(rawDamage);
+        // Valor rule: spell damage is not reduced by defense or dodge
+        target.takeSpellDamage(rawDamage);
         if (effect != null) {
             effect.apply(caster, target, rawDamage);
         }
