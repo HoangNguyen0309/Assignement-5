@@ -5,14 +5,14 @@
 ---
 
 - Name: Chenyu Wu
-  Email: tony56cx@bu.edu
-  Student ID: U39064594
+- Email: tony56cx@bu.edu
+- Student ID: U39064594
 - Name: Hoang Nguyen
-  Email: hnguy@bu.edu
-  Student ID: U36068287
+- Email: hnguy@bu.edu
+- Student ID: U36068287
 - Name: Xiaoxi Jiang
-  Email: xiaoxij@bu.edu
-  Student ID: U32683512
+- Email: xiaoxij@bu.edu
+- Student ID: U32683512
 
 ## File Structure
 
