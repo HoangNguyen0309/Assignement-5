@@ -122,7 +122,7 @@ public final class ValorSupport {
         ctx.renderer.renderMessage("  4) Inventory");
         ctx.renderer.renderMessage("  5) Recall");
         ctx.renderer.renderMessage("  6) Shop (free, if at Hero Nexus)");
-        ctx.renderer.renderMessage("  7) Retreat (fall back one tile, nearby monster advances)");
+        ctx.renderer.renderMessage("  7) Retreat (fall back one tile, engaged monster advances)");
         ctx.renderer.renderMessage("  8) Teleport");
         ctx.renderer.renderMessage("  9) Remove Obstacle");
         ctx.renderer.renderMessage("  10) View Party/Monsters (free)");
