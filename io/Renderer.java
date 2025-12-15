@@ -1,11 +1,11 @@
 package io;
 
 import java.util.List;
-import java.util.Map;      // ✅ added
+import java.util.Map;
 
 import characters.Hero;
 import characters.Monster;
-import core.Position;      // ✅ added
+import core.Position;
 import world.World;
 
 

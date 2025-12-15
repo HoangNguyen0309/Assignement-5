@@ -183,6 +183,7 @@ public class HeroMovementService {
         ctx.heroPositions.put(hero, dest);
         terrain.apply(ctx, hero, dest);
         ctx.renderer.renderMessage(hero.getName() + " teleports to (" + dest.getRow() + ", " + dest.getCol() + ")");
+        ctx.log(hero.getName() + " teleported to (" + dest.getRow() + ", " + dest.getCol() + ").");
         return true;
     }
 
@@ -206,6 +207,7 @@ public class HeroMovementService {
 
         ctx.world.setTile(targetRow, targetCol, new CommonTile(TileType.COMMON));
         ctx.renderer.renderMessage(hero.getName() + " cleared the obstacle ahead.");
+        ctx.log(hero.getName() + " cleared the obstacle at (" + targetRow + ", " + targetCol + ").");
         return true;
     }
 
