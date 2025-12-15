@@ -1,0 +1,226 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package entry {
+  class Main
+}
+
+package battle {
+  interface Battle
+}
+
+package io {
+  interface Renderer
+  class ConsoleRenderer
+  interface InputHandler
+  class ConsoleInputHandler
+  class BannerPrinter
+  Renderer <|.. ConsoleRenderer
+  InputHandler <|.. ConsoleInputHandler
+}
+
+package core {
+  class GameEngine
+  class ValorGameEngine
+  class ValorGameLoop
+}
+
+package core.valor {
+  class ValorContext
+  class ValorSupport <<static>>
+}
+
+package core.valor.phases {
+  interface Phase
+  class SetupPhase
+  class HeroPhase
+  class MonsterPhase
+  class CleanupPhase
+  class EndOfRoundPhase
+  Phase <|.. SetupPhase
+  Phase <|.. HeroPhase
+  Phase <|.. MonsterPhase
+  Phase <|.. CleanupPhase
+  Phase <|.. EndOfRoundPhase
+}
+
+package core.valor.services {
+  class HeroTurnController
+  class HeroMovementService
+  class HeroCombatService
+  class HeroInventoryService
+  class MarketSystem
+  class TerrainSystem
+  class MonsterSystem
+  class ValorRules <<static>>
+}
+
+class World
+class Hero
+class Monster
+class HeroFactory
+class ItemFactory
+class MonsterFactory
+class MarketController
+class PartyBuilder
+
+Main --> Renderer
+Main --> InputHandler
+Main --> BannerPrinter
+Main --> PartyBuilder
+Main --> HeroFactory
+Main --> World
+Main --> GameEngine : classic mode
+Main --> ValorGameEngine : valor mode
+
+GameEngine ..|> Battle
+ValorGameEngine ..|> Battle
+ValorGameEngine *-- ValorGameLoop
+ValorGameEngine ..> ValorContext
+
+ValorGameLoop *-- ValorContext
+ValorGameLoop *-- SetupPhase
+ValorGameLoop *-- HeroPhase
+ValorGameLoop *-- MonsterPhase
+ValorGameLoop *-- CleanupPhase
+ValorGameLoop *-- EndOfRoundPhase
+
+ValorContext o-- World
+ValorContext o-- Renderer
+ValorContext o-- InputHandler
+ValorContext o-- Hero
+ValorContext o-- Monster
+ValorContext o-- MarketController
+ValorContext o-- MonsterFactory
+ValorContext o-- ItemFactory
+
+HeroPhase *-- HeroTurnController
+HeroTurnController *-- HeroMovementService
+HeroTurnController *-- HeroCombatService
+HeroTurnController *-- HeroInventoryService
+HeroTurnController *-- MarketSystem
+HeroTurnController *-- TerrainSystem
+HeroTurnController ..> ValorSupport : render menu
+HeroMovementService --> TerrainSystem
+HeroMovementService ..> ValorRules
+MonsterPhase *-- MonsterSystem
+MonsterSystem ..> ValorRules
+SetupPhase ..> ValorSupport
+CleanupPhase ..> ValorSupport
+EndOfRoundPhase ..> ValorSupport
+ValorSupport ..> ValorRules
+@enduml
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package entry {
+  class Main
+}
+
+package battle {
+  interface Battle
+}
+
+package io {
+  interface Renderer
+  class ConsoleRenderer
+  interface InputHandler
+  class ConsoleInputHandler
+  class BannerPrinter
+  Renderer <|.. ConsoleRenderer
+  InputHandler <|.. ConsoleInputHandler
+}
+
+package core {
+  class GameEngine
+  class ValorGameEngine
+  class ValorGameLoop
+}
+
+package core.valor {
+  class ValorContext
+  class ValorSupport <<static>>
+}
+
+package core.valor.phases {
+  interface Phase
+  class SetupPhase
+  class HeroPhase
+  class MonsterPhase
+  class CleanupPhase
+  class EndOfRoundPhase
+  Phase <|.. SetupPhase
+  Phase <|.. HeroPhase
+  Phase <|.. MonsterPhase
+  Phase <|.. CleanupPhase
+  Phase <|.. EndOfRoundPhase
+}
+
+package core.valor.services {
+  class HeroTurnController
+  class HeroMovementService
+  class HeroCombatService
+  class HeroInventoryService
+  class MarketSystem
+  class TerrainSystem
+  class MonsterSystem
+  class ValorRules <<static>>
+}
+
+class World
+class Hero
+class Monster
+class HeroFactory
+class ItemFactory
+class MonsterFactory
+class MarketController
+class PartyBuilder
+
+Main --> Renderer
+Main --> InputHandler
+Main --> BannerPrinter
+Main --> PartyBuilder
+Main --> HeroFactory
+Main --> World
+Main --> GameEngine : classic mode
+Main --> ValorGameEngine : valor mode
+
+GameEngine ..|> Battle
+ValorGameEngine ..|> Battle
+ValorGameEngine *-- ValorGameLoop
+ValorGameEngine ..> ValorContext
+
+ValorGameLoop *-- ValorContext
+ValorGameLoop *-- SetupPhase
+ValorGameLoop *-- HeroPhase
+ValorGameLoop *-- MonsterPhase
+ValorGameLoop *-- CleanupPhase
+ValorGameLoop *-- EndOfRoundPhase
+
+ValorContext o-- World
+ValorContext o-- Renderer
+ValorContext o-- InputHandler
+ValorContext o-- Hero
+ValorContext o-- Monster
+ValorContext o-- MarketController
+ValorContext o-- MonsterFactory
+ValorContext o-- ItemFactory
+
+HeroPhase *-- HeroTurnController
+HeroTurnController *-- HeroMovementService
+HeroTurnController *-- HeroCombatService
+HeroTurnController *-- HeroInventoryService
+HeroTurnController *-- MarketSystem
+HeroTurnController *-- TerrainSystem
+HeroTurnController ..> ValorSupport : render menu
+HeroMovementService --> TerrainSystem
+HeroMovementService ..> ValorRules
+MonsterPhase *-- MonsterSystem
+MonsterSystem ..> ValorRules
+SetupPhase ..> ValorSupport
+CleanupPhase ..> ValorSupport
+EndOfRoundPhase ..> ValorSupport
+ValorSupport ..> ValorRules
+@enduml
