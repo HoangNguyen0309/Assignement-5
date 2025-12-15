@@ -3,6 +3,7 @@ package core.valor.services;
 import java.util.ArrayList;
 import java.util.List;
 
+import battle.AttackAction;
 import characters.Hero;
 import characters.Monster;
 import config.GameBalance;
@@ -17,6 +18,7 @@ public class HeroCombatService {
         Position heroPos = ctx.heroPositions.get(hero);
         if (heroPos == null) return false;
 
+        // Only monsters in range
         List<Monster> targets = new ArrayList<Monster>();
         for (Monster m : ctx.monsters) {
             if (m.isFainted()) continue;
@@ -29,36 +31,20 @@ public class HeroCombatService {
             return false;
         }
 
-        ctx.renderer.renderMessage("Choose a monster to attack:");
-        for (int i = 0; i < targets.size(); i++) {
-            Monster m = targets.get(i);
-            ctx.renderer.renderMessage("  " + (i + 1) + ") " + m.getName()
-                    + " (Lv " + m.getLevel()
-                    + ", HP " + m.getHP() + "/" + m.getMaxHP() + ")");
-        }
-        ctx.renderer.renderMessage("  0) Back");
+        // Use AttackAction to do selection + damage
+        AttackAction action = new AttackAction();
+        action.execute(hero, ctx.heroes, targets, ctx.renderer, ctx.input);
 
-        int choice = ctx.input.readInt();
-        if (choice == 0) return false;
-        choice--;
+        Monster target = action.getLastTarget();
+        int effective = action.getLastEffectiveDamage();
 
-        if (choice < 0 || choice >= targets.size()) {
-            ctx.renderer.renderMessage("Invalid target.");
-            return false;
-        }
+        // If player backed out / invalid choice, no target selected -> no turn spent
+        if (target == null) return false;
 
-        Monster target = targets.get(choice);
-        int baseDamage = hero.basicAttackDamage();
-
-        int before = target.getHP();
-        target.takeDamage(baseDamage);
-        int effective = before - target.getHP();
-        if (effective < 0) effective = 0;
-
-        ctx.renderer.renderMessage(hero.getName() + " attacked " + target.getName()
-                + " for " + effective + " damage.");
+        // Log once (AttackAction already rendered the message)
         ctx.log(hero.getName() + " attacked " + target.getName() + " for " + effective + " damage.");
 
+        // Rewards if killed
         if (target.isFainted()) {
             ctx.renderer.renderMessage(target.getName() + " has been defeated!");
             int xp = target.getLevel() * GameBalance.XP_PER_MONSTER_LEVEL_VALOR;
@@ -66,8 +52,7 @@ public class HeroCombatService {
             hero.gainExperience(xp);
             hero.addGold(gold);
             ctx.renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
-            ctx.log(target.getName() + " has been defeated.");
-            ctx.log(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
+            ctx.log(target.getName() + " defeated by " + hero.getName() + " (+" + xp + " XP, +" + gold + " gold).");
         }
 
         return true;
@@ -151,8 +136,7 @@ public class HeroCombatService {
 
         ctx.renderer.renderMessage(hero.getName() + " casts " + spell.getName()
                 + " on " + target.getName() + " for " + effective + " damage.");
-        ctx.log(hero.getName() + " casts " + spell.getName()
-                + " on " + target.getName() + " for " + effective + " damage.");
+        ctx.log(hero.getName() + " cast " + spell.getName() + " on " + target.getName() + " for " + effective + " damage.");
 
         if (target.isFainted()) {
             ctx.renderer.renderMessage(target.getName() + " has been defeated!");
@@ -161,8 +145,7 @@ public class HeroCombatService {
             hero.gainExperience(xp);
             hero.addGold(gold);
             ctx.renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
-            ctx.log(target.getName() + " has been defeated.");
-            ctx.log(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
+            ctx.log(target.getName() + " defeated by " + hero.getName() + " (+" + xp + " XP, +" + gold + " gold).");
         }
 
         return true;
