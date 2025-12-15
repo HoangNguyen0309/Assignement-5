@@ -1,7 +1,7 @@
 package core.valor.phases;
 
 import core.valor.ValorContext;
-import core.valor.ui.HeroTurnController;
+import core.valor.services.HeroTurnController;
 
 public class HeroPhase implements Phase {
 

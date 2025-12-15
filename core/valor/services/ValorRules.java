@@ -38,6 +38,36 @@ public final class ValorRules {
         return dr <= 1 && dc <= 1 && ctx.world.sameLane(a, b);
     }
 
+    /**
+     * A hero is considered "engaged" if any living monster in the same lane is within attack range.
+     */
+    public static boolean isHeroEngaged(ValorContext ctx, Hero hero) {
+        if (hero == null || hero.isFainted()) return false;
+        Position hp = ctx.heroPositions.get(hero);
+        if (hp == null) return false;
+
+        return getEngagedMonster(ctx, hero) != null;
+    }
+
+    /**
+     * Returns one engaged monster (same lane and in attack range) for the given hero, or null if none.
+     */
+    public static Monster getEngagedMonster(ValorContext ctx, Hero hero) {
+        if (hero == null || hero.isFainted()) return null;
+        Position hp = ctx.heroPositions.get(hero);
+        if (hp == null) return null;
+
+        for (Map.Entry<Monster, Position> e : ctx.monsterPositions.entrySet()) {
+            Monster m = e.getKey();
+            if (m == null || m.isFainted()) continue;
+            Position mp = e.getValue();
+            if (mp == null) continue;
+            if (!ctx.world.sameLane(hp, mp)) continue;
+            if (isInRange(ctx, hp, mp)) return m;
+        }
+        return null;
+    }
+
     // ------------------------------------------------------------
     // Occupancy checks
     // ------------------------------------------------------------

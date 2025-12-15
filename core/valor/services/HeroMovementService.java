@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import characters.Hero;
+import characters.Monster;
 import core.Direction;
 import core.Position;
 import core.valor.ValorContext;
@@ -206,6 +207,82 @@ public class HeroMovementService {
         ctx.world.setTile(targetRow, targetCol, new CommonTile(TileType.COMMON));
         ctx.renderer.renderMessage(hero.getName() + " cleared the obstacle ahead.");
         return true;
+    }
+
+    public boolean retreat(ValorContext ctx, Hero hero) {
+        if (!ValorRules.isHeroEngaged(ctx, hero)) {
+            ctx.renderer.renderMessage("You can only retreat while engaged in combat.");
+            return false;
+        }
+
+        Monster engaged = ValorRules.getEngagedMonster(ctx, hero);
+        if (engaged == null) {
+            ctx.renderer.renderMessage("No engaged monster found. Retreat failed.");
+            return false;
+        }
+
+        Position pos = ctx.heroPositions.get(hero);
+        if (pos == null) return false;
+
+        int newRow = pos.getRow() + 1; // retreat toward hero nexus (down)
+        int newCol = pos.getCol();
+
+        if (!ValorRules.isInsideBoard(ctx, newRow, newCol)) {
+            ctx.renderer.renderMessage("Cannot retreat outside the board.");
+            return false;
+        }
+
+        Position dest = new Position(newRow, newCol);
+        if (!ctx.world.isAccessible(dest)) {
+            ctx.renderer.renderMessage("That tile is not accessible.");
+            return false;
+        }
+
+        if (ValorRules.isOccupiedByHero(ctx, dest, hero)) {
+            ctx.renderer.renderMessage("Another hero is already there.");
+            return false;
+        }
+
+        if (ValorRules.isOccupiedByMonster(ctx, dest, null)) {
+            ctx.renderer.renderMessage("A monster blocks the retreat path.");
+            return false;
+        }
+
+        ctx.heroPositions.put(hero, dest);
+        terrain.apply(ctx, hero, dest);
+
+        Monster advanced = advanceMonster(ctx, pos, engaged);
+
+        int healAmount = (int) Math.ceil(hero.getMaxHP() * 0.15);
+        hero.heal(healAmount);
+        ctx.grantHeroImmunity(hero, 1);
+
+        ctx.renderer.renderMessage(hero.getName() + " retreats to (" + dest.getRow() + ", " + dest.getCol() + "), recovers " + healAmount + " HP and is immune next monster turn.");
+        if (advanced != null) {
+            Position mp = ctx.monsterPositions.get(advanced);
+            if (mp != null) {
+                ctx.renderer.renderMessage(advanced.getName() + " advances to (" + mp.getRow() + ", " + mp.getCol() + ").");
+            }
+        }
+        ctx.log(hero.getName() + " retreated to (" + dest.getRow() + ", " + dest.getCol() + ") and gained immunity.");
+        return true;
+    }
+
+    private Monster advanceMonster(ValorContext ctx, Position heroPos, Monster engaged) {
+        if (engaged == null || engaged.isFainted()) return null;
+        Position mp = ctx.monsterPositions.get(engaged);
+        if (mp == null) return null;
+        if (!ctx.world.sameLane(heroPos, mp)) return null;
+
+        Position dest = new Position(mp.getRow() + 1, mp.getCol());
+        if (!ValorRules.isInsideBoard(ctx, dest.getRow(), dest.getCol())) return null;
+        if (!ctx.world.isAccessible(dest)) return null;
+        if (ValorRules.isOccupiedByMonster(ctx, dest, engaged)) return null;
+        if (ValorRules.isOccupiedByHero(ctx, dest, null)) return null;
+        if (ValorRules.wouldMovePastEnemy(ctx, mp, dest, false)) return null;
+
+        ctx.monsterPositions.put(engaged, dest);
+        return engaged;
     }
 
     private Position findAvailableHeroNexusSlot(ValorContext ctx, int laneIndex, Hero hero) {

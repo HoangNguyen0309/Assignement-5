@@ -75,6 +75,8 @@ public class MonsterSystem {
 
             // else: stuck
         }
+
+        ctx.tickHeroImmunity();
     }
 
     private boolean canMoveTo(ValorContext ctx, Monster monster, Position from, Position to) {
@@ -99,6 +101,11 @@ public class MonsterSystem {
     }
 
     private void attack(ValorContext ctx, Monster monster, Hero target) {
+        if (ctx.isHeroImmune(target)) {
+            ctx.renderer.renderMessage(target.getName() + " is immune this turn and ignores " + monster.getName() + "'s attack.");
+            return;
+        }
+
         int rawDamage = monster.getDamage();
         int reduced = rawDamage - target.getArmorReduction();
         if (reduced < 0) reduced = 0;

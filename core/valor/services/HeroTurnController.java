@@ -1,4 +1,4 @@
-package core.valor.ui;
+package core.valor.services;
 
 import characters.Hero;
 import core.valor.ValorContext;
@@ -38,13 +38,14 @@ public class HeroTurnController {
                     case 4: actionTaken = inventory.openInventory(ctx, hero); break;
                     case 5: actionTaken = movement.recall(ctx, hero); break;
                     case 6: market.openShopIfAtHeroNexus(ctx, hero); break; // free
-                    case 7: actionTaken = movement.teleport(ctx, hero); break;
-                    case 8: actionTaken = movement.removeObstacle(ctx, hero); break;
-                    case 9:
+                    case 7: actionTaken = movement.retreat(ctx, hero); break;
+                    case 8: actionTaken = movement.teleport(ctx, hero); break;
+                    case 9: actionTaken = movement.removeObstacle(ctx, hero); break;
+                    case 10:
                         ctx.renderer.renderHeroStats(ctx.heroes, ctx.heroCodes);
                         ctx.renderer.renderMonsterStats(ctx.monsters, ctx.monsterCodes);
                         break;
-                    case 10:
+                    case 11:
                         ctx.renderer.renderMessage(hero.getName() + " skips the turn.");
                         actionTaken = true;
                         break;

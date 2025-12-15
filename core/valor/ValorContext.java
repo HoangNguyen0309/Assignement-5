@@ -43,6 +43,7 @@ public class ValorContext {
 
     public final Map<Hero, String> heroCodes = new HashMap<Hero, String>();
     public final Map<Integer, Integer> laneMaxLevels = new HashMap<Integer, Integer>(); // laneIndex -> max hero level
+    public final Map<Hero, Integer> heroImmunityTurns = new HashMap<Hero, Integer>(); // remaining monster phases of immunity
 
     public final List<String> roundLog = new ArrayList<String>();
 
@@ -68,5 +69,22 @@ public class ValorContext {
 
     public void log(String msg) {
         if (roundLog != null) roundLog.add(msg);
+    }
+
+    public void grantHeroImmunity(Hero hero, int turns) {
+        if (hero == null || turns <= 0) return;
+        heroImmunityTurns.put(hero, turns);
+    }
+
+    public boolean isHeroImmune(Hero hero) {
+        Integer remaining = heroImmunityTurns.get(hero);
+        return remaining != null && remaining > 0;
+    }
+
+    public void tickHeroImmunity() {
+        for (Map.Entry<Hero, Integer> e : heroImmunityTurns.entrySet()) {
+            if (e.getValue() == null || e.getValue() <= 0) continue;
+            e.setValue(Math.max(0, e.getValue() - 1));
+        }
     }
 }
