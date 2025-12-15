@@ -1,10 +1,12 @@
 package io;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class BannerPrinter {
 
@@ -20,7 +22,7 @@ public class BannerPrinter {
 
     public BannerPrinter(Renderer renderer, String bannerPath) {
         this.renderer = renderer;
-        this.bannerPath = Path.of(bannerPath);
+        this.bannerPath = Paths.get(bannerPath);
         this.classpathLocation = "/" + bannerPath.replace("\\", "/");
     }
 
@@ -38,7 +40,8 @@ public class BannerPrinter {
         // Try filesystem first (useful when running from project root)
         try {
             if (Files.exists(bannerPath)) {
-                return Files.readString(bannerPath);
+                byte[] bytes = Files.readAllBytes(bannerPath);
+                return new String(bytes, StandardCharsets.UTF_8);
             }
         } catch (IOException ignored) {
             // Fall through to classpath attempt
@@ -47,8 +50,13 @@ public class BannerPrinter {
         // Fallback: try to load from classpath (useful when packaged)
         try (InputStream in = BannerPrinter.class.getResourceAsStream(classpathLocation)) {
             if (in != null) {
-                byte[] bytes = in.readAllBytes();
-                return new String(bytes, StandardCharsets.UTF_8);
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                byte[] data = new byte[4096];
+                int nRead;
+                while ((nRead = in.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, nRead);
+                }
+                return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
             }
         } catch (IOException ignored) {
         }
