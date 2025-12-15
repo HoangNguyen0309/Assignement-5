@@ -2,6 +2,7 @@ package core.valor.ui;
 
 import characters.Hero;
 import core.valor.ValorContext;
+import core.valor.ValorSupport;
 import core.valor.services.HeroCombatService;
 import core.valor.services.HeroInventoryService;
 import core.valor.services.HeroMovementService;
@@ -60,24 +61,7 @@ public class HeroTurnController {
     }
 
     private void renderMenu(ValorContext ctx, Hero hero, boolean showBoard) {
-        if (showBoard) {
-            ctx.renderer.renderWorld(ctx.world, ctx.heroPositions, ctx.monsterPositions, ctx.heroCodes, ctx.monsterCodes);
-        }
-
-        String code = ctx.heroCodes.get(hero);
-        if (code == null) code = "h?";
-
-        ctx.renderer.renderMessage(hero.getName() + " (" + code + "), choose your action:");
-        ctx.renderer.renderMessage("  1) Move");
-        ctx.renderer.renderMessage("  2) Attack");
-        ctx.renderer.renderMessage("  3) Cast Spell");
-        ctx.renderer.renderMessage("  4) Inventory");
-        ctx.renderer.renderMessage("  5) Recall");
-        ctx.renderer.renderMessage("  6) Shop (free, if at Hero Nexus)");
-        ctx.renderer.renderMessage("  7) Teleport");
-        ctx.renderer.renderMessage("  8) Remove Obstacle");
-        ctx.renderer.renderMessage("  9) View Party/Monsters (free)");
-        ctx.renderer.renderMessage("  10) Skip");
+        ValorSupport.renderHeroTurnMenu(ctx, hero, showBoard);
     }
 
     private void assignHeroCodes(ValorContext ctx) {
