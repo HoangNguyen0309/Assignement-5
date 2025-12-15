@@ -62,6 +62,7 @@ public class HeroMovementService {
         ctx.heroPositions.put(hero, dest);
         terrain.apply(ctx, hero, dest);
         ctx.renderer.renderMessage(hero.getName() + " moved to (" + newRow + ", " + newCol + ").");
+        ctx.log(hero.getName() + " moved to (" + newRow + ", " + newCol + ").");
         return true;
     }
 
@@ -86,6 +87,7 @@ public class HeroMovementService {
         ctx.heroPositions.put(hero, new Position(dest.getRow(), dest.getCol()));
         terrain.apply(ctx, hero, dest);
         ctx.renderer.renderMessage(hero.getName() + " recalls to their Hero Nexus.");
+        ctx.log(hero.getName() + " recalls to their Hero Nexus.");
         return true;
     }
 

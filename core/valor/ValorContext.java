@@ -65,4 +65,8 @@ public class ValorContext {
         this.random = new Random();
         this.monsterWavePeriod = monsterWavePeriod;
     }
+
+    public void log(String msg) {
+        if (roundLog != null) roundLog.add(msg);
+    }
 }

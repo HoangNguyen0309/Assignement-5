@@ -57,6 +57,7 @@ public class HeroCombatService {
 
         ctx.renderer.renderMessage(hero.getName() + " attacked " + target.getName()
                 + " for " + effective + " damage.");
+        ctx.log(hero.getName() + " attacked " + target.getName() + " for " + effective + " damage.");
 
         if (target.isFainted()) {
             ctx.renderer.renderMessage(target.getName() + " has been defeated!");

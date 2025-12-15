@@ -43,6 +43,8 @@ public class MonsterSystem {
             if (step != null && canMoveTo(ctx, monster, start, step)) {
                 ctx.monsterPositions.put(monster, step);
                 ctx.renderer.renderMessage(monster.getName() + " moves to (" + step.getRow() + ", " + step.getCol() + ").");
+                ctx.log(monster.getName() + " moved to (" + step.getRow() + ", " + step.getCol() + ").");
+
                 continue;
             }
 
@@ -51,6 +53,8 @@ public class MonsterSystem {
             if (canMoveTo(ctx, monster, start, down)) {
                 ctx.monsterPositions.put(monster, down);
                 ctx.renderer.renderMessage(monster.getName() + " moves to (" + down.getRow() + ", " + down.getCol() + ").");
+                ctx.log(monster.getName() + " moves to (" + down.getRow() + ", " + down.getCol() + ").");
+
                 continue;
             }
 
@@ -106,6 +110,7 @@ public class MonsterSystem {
 
         target.takeDamage(reduced);
         ctx.renderer.renderMessage(monster.getName() + " attacked " + target.getName() + " for " + reduced + " damage.");
+
     }
 
     /**
