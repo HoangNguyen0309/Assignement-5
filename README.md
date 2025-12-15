@@ -4,7 +4,7 @@
 
 ---
 
-- Name: Chenyu Wu
+- Name: Chunyu Wu
 - Email: tony56cx@bu.edu
 - Student ID: U39064594
 - Name: Hoang Nguyen
