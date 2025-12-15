@@ -66,6 +66,8 @@ public class HeroCombatService {
             hero.gainExperience(xp);
             hero.addGold(gold);
             ctx.renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
+            ctx.log(target.getName() + " has been defeated.");
+            ctx.log(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
         }
 
         return true;
@@ -149,6 +151,8 @@ public class HeroCombatService {
 
         ctx.renderer.renderMessage(hero.getName() + " casts " + spell.getName()
                 + " on " + target.getName() + " for " + effective + " damage.");
+        ctx.log(hero.getName() + " casts " + spell.getName()
+                + " on " + target.getName() + " for " + effective + " damage.");
 
         if (target.isFainted()) {
             ctx.renderer.renderMessage(target.getName() + " has been defeated!");
@@ -157,6 +161,8 @@ public class HeroCombatService {
             hero.gainExperience(xp);
             hero.addGold(gold);
             ctx.renderer.renderMessage(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
+            ctx.log(target.getName() + " has been defeated.");
+            ctx.log(hero.getName() + " gains " + xp + " XP and " + gold + " gold.");
         }
 
         return true;

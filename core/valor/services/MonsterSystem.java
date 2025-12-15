@@ -63,6 +63,7 @@ public class MonsterSystem {
             if (canMoveTo(ctx, monster, start, left) && ctx.world.sameLane(start, left)) {
                 ctx.monsterPositions.put(monster, left);
                 ctx.renderer.renderMessage(monster.getName() + " sidesteps to (" + left.getRow() + ", " + left.getCol() + ").");
+                ctx.log(monster.getName() + " sidestepped to (" + left.getRow() + ", " + left.getCol() + ").");
                 continue;
             }
 
@@ -70,6 +71,7 @@ public class MonsterSystem {
             if (canMoveTo(ctx, monster, start, right) && ctx.world.sameLane(start, right)) {
                 ctx.monsterPositions.put(monster, right);
                 ctx.renderer.renderMessage(monster.getName() + " sidesteps to (" + right.getRow() + ", " + right.getCol() + ").");
+                ctx.log(monster.getName() + " sidestepped to (" + right.getRow() + ", " + right.getCol() + ").");
                 continue;
             }
 
@@ -103,6 +105,7 @@ public class MonsterSystem {
     private void attack(ValorContext ctx, Monster monster, Hero target) {
         if (ctx.isHeroImmune(target)) {
             ctx.renderer.renderMessage(target.getName() + " is immune this turn and ignores " + monster.getName() + "'s attack.");
+            ctx.log(target.getName() + " ignored the attack from " + monster.getName() + " due to immunity.");
             return;
         }
 
@@ -112,11 +115,13 @@ public class MonsterSystem {
 
         if (target.tryDodge()) {
             ctx.renderer.renderMessage(target.getName() + " dodged the attack from " + monster.getName() + "!");
+            ctx.log(target.getName() + " dodged the attack from " + monster.getName() + ".");
             return;
         }
 
         target.takeDamage(reduced);
         ctx.renderer.renderMessage(monster.getName() + " attacked " + target.getName() + " for " + reduced + " damage.");
+        ctx.log(monster.getName() + " attacked " + target.getName() + " for " + reduced + " damage.");
 
     }
 

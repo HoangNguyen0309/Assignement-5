@@ -627,6 +627,7 @@ public final class ValorSupport {
                 h.heal(h.getMaxHP());
                 h.restoreMana(h.getMaxMana());
                 ctx.renderer.renderMessage(h.getName() + " is revived at their Hero Nexus!");
+                logAction(ctx, h.getName() + " is revived at their Hero Nexus.");
             }
         }
 
