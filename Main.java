@@ -4,6 +4,7 @@ import characters.Hero;
 import core.GameEngine;
 import core.ValorGameEngine;
 import data.HeroFactory;
+import io.BannerPrinter;
 import io.ConsoleInputHandler;
 import io.ConsoleRenderer;
 import io.InputHandler;
@@ -16,6 +17,7 @@ public class Main {
 
         Renderer renderer = new ConsoleRenderer();
         InputHandler input = new ConsoleInputHandler();
+        BannerPrinter bannerPrinter = new BannerPrinter(renderer);
 
         renderer.renderMessage("Welcome to Legends!");
         renderer.renderMessage("Choose a game mode:");
@@ -37,6 +39,7 @@ public class Main {
             // Classic game: player chooses 1–3 heroes
             party = PartyBuilder.buildParty(renderer, input, heroFactory);
         } else {
+            bannerPrinter.printValorBanner();
             // Legends of Valor: exactly 3 heroes, one per lane
             party = PartyBuilder.buildValorParty(renderer, input, heroFactory);
         }
@@ -69,7 +72,7 @@ public class Main {
                 }
             }
             ValorGameEngine valorEngine = new ValorGameEngine(world, party, renderer, input, wavePeriod);
-            valorEngine.run();
+            valorEngine.start();
         }
     }
 }
