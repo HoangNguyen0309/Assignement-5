@@ -210,6 +210,17 @@ public class HeroMovementService {
     }
 
     public boolean retreat(ValorContext ctx, Hero hero) {
+        if (!ValorRules.isHeroEngaged(ctx, hero)) {
+            ctx.renderer.renderMessage("You can only retreat while engaged in combat.");
+            return false;
+        }
+
+        Monster engaged = ValorRules.getEngagedMonster(ctx, hero);
+        if (engaged == null) {
+            ctx.renderer.renderMessage("No engaged monster found. Retreat failed.");
+            return false;
+        }
+
         Position pos = ctx.heroPositions.get(hero);
         if (pos == null) return false;
 
@@ -240,7 +251,7 @@ public class HeroMovementService {
         ctx.heroPositions.put(hero, dest);
         terrain.apply(ctx, hero, dest);
 
-        Monster advanced = advanceNearestMonster(ctx, pos);
+        Monster advanced = advanceMonster(ctx, pos, engaged);
 
         int healAmount = (int) Math.ceil(hero.getMaxHP() * 0.15);
         hero.heal(healAmount);
@@ -257,36 +268,21 @@ public class HeroMovementService {
         return true;
     }
 
-    private Monster advanceNearestMonster(ValorContext ctx, Position heroPos) {
-        Monster nearest = null;
-        Position nearestPos = null;
-        int bestDistance = Integer.MAX_VALUE;
+    private Monster advanceMonster(ValorContext ctx, Position heroPos, Monster engaged) {
+        if (engaged == null || engaged.isFainted()) return null;
+        Position mp = ctx.monsterPositions.get(engaged);
+        if (mp == null) return null;
+        if (!ctx.world.sameLane(heroPos, mp)) return null;
 
-        for (Monster m : ctx.monsters) {
-            if (m == null || m.isFainted()) continue;
-            Position mp = ctx.monsterPositions.get(m);
-            if (mp == null) continue;
-            if (!ctx.world.sameLane(heroPos, mp)) continue;
-
-            int dist = Math.abs(mp.getRow() - heroPos.getRow());
-            if (dist < bestDistance) {
-                bestDistance = dist;
-                nearest = m;
-                nearestPos = mp;
-            }
-        }
-
-        if (nearest == null || nearestPos == null) return null;
-
-        Position dest = new Position(nearestPos.getRow() + 1, nearestPos.getCol());
+        Position dest = new Position(mp.getRow() + 1, mp.getCol());
         if (!ValorRules.isInsideBoard(ctx, dest.getRow(), dest.getCol())) return null;
         if (!ctx.world.isAccessible(dest)) return null;
-        if (ValorRules.isOccupiedByMonster(ctx, dest, nearest)) return null;
+        if (ValorRules.isOccupiedByMonster(ctx, dest, engaged)) return null;
         if (ValorRules.isOccupiedByHero(ctx, dest, null)) return null;
-        if (ValorRules.wouldMovePastEnemy(ctx, nearestPos, dest, false)) return null;
+        if (ValorRules.wouldMovePastEnemy(ctx, mp, dest, false)) return null;
 
-        ctx.monsterPositions.put(nearest, dest);
-        return nearest;
+        ctx.monsterPositions.put(engaged, dest);
+        return engaged;
     }
 
     private Position findAvailableHeroNexusSlot(ValorContext ctx, int laneIndex, Hero hero) {
