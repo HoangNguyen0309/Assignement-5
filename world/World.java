@@ -219,13 +219,13 @@ public class World {
                     continue;
                 }
 
-                // Monster Nexus on top row (one per lane, left column of each lane)
+                // Monster Nexus on top row
                 if (r == 0 && (c == 0 || c == 1 ||c == 3 || c == 4 || c == 6 || c == 7)) {
                     tiles[r][c] = new MonsterNexusTile();
                     continue;
                 }
 
-                // Hero Nexus on bottom row (one per lane, left column of each lane)
+                // Hero Nexus on bottom row
                 if (r == size - 1 && (c == 0 || c == 1 ||c == 3 || c == 4 || c == 6 || c == 7)) {
                     tiles[r][c] = new HeroNexusTile(null);
                     continue;
