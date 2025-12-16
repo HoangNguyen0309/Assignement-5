@@ -90,7 +90,7 @@ Assignement-5/
 
 ---
 
-- Visual flair on CLI: colored terrain and IDs on the Valor board, plus a red ASCII banner (only for Valor temporarily) to set the mood before play.
+- Visual design on CLI: colored terrain and IDs on the Valor board, plus a red ASCII banner (only for Valor temporarily) to set the mood before play.
 - Rich Valor hero toolkit: move/attack/spell plus recall, retreat with temporary immunity, cross-lane teleport with lane rules, and in-place obstacle removal; markets open only on hero nexus tiles with lane-scaled stock.
 - Monster AI that pathfinds within lanes (BFS), respects blockers, sidesteps obstacles, and honors hero immunity/dodge, making positioning matter.
 - Dynamic content from data files: heroes/monsters/items/spells are all loaded and scaled at runtime, so balance changes are data-driven, not hardcoded.
