@@ -315,3 +315,154 @@ ctx.grantHeroImmunity(hero, 1); // 1-turn immunity checked in MonsterSystem
 - **Component:** `party.PartyBuilder`  
 
   **Responsibility:** Correct classic hero selection prompt text for clarity (range 1–3).
+
+## World / Map Layer
+
+### `world.World`
+
+**Responsibility**
+
+- Owns the board grid: `Tile[][] tiles`, board `size`, and world `type` (`"Hero and Monster"` vs `"Valor"`).
+- Initializes the map based on `type`:
+  - **Hero and Monster**: sets `partyPosition` to bottom-left, randomly fills tiles, then runs a BFS connectivity check; retries up to `MAX_GENERATION_ATTEMPTS`, otherwise falls back to a fully connected map.
+  - **Valor**: builds a fixed 3-lane 8×8 layout (walls at columns 2 and 5), places `MonsterNexus` on the top row and `HeroNexus` on the bottom row, then fills each lane with required terrain types.
+- Supports classic movement with collision rules via `move(Direction)` (bounds + accessibility check).
+- Provides Valor-specific helpers used by engine/services:
+  - Bounds/accessibility: `isInside(Position)`, `isAccessible(Position)`
+  - Lane logic: `laneIndexForCol(int)`, `sameLane(Position, Position)`, `isLaneWall(int)`
+  - Nexus positions: `getHeroNexusForLane(int)`, `getMonsterNexusForLane(int)`, and “two-column per lane” helpers.
+
+**Relationships**
+
+- Stored and shared via `core.valor.ValorContext` as the central board state.
+- Depends on `core.Position` and `core.Direction` for coordinates and movement.
+- Uses `world.Tile` / `world.TileType` to encode tile semantics; concrete tile classes implement the behavior (`CommonTile`, `MarketTile`, `HeroNexusTile`, etc.).
+- Queried by movement/AI/rules (e.g., services call `isAccessible`, `sameLane`, lane index helpers) and mutated when terrain/obstacles change.
+
+```text
+Valor lane columns (8×8):
+[0,1] | wall(2) | [3,4] | wall(5) | [6,7]
+Row 0: Monster Nexus tiles (two per lane)
+Row 7: Hero Nexus tiles (two per lane)
+```
+
+------
+
+### `world.Tile` (interface)
+
+**Responsibility**
+
+- Minimal contract for all tiles:
+  - `boolean isAccessible()`
+  - `TileType getType()`
+
+**Relationships**
+
+- Implemented by all tile classes; consumed by `World` and higher-level services to decide movement, terrain effects, and special locations.
+
+------
+
+### `world.TileType` (enum)
+
+**Responsibility**
+
+- Defines all tile categories across both modes:
+  - Hero & Monster: `INACCESSIBLE`, `MARKET`, `COMMON`
+  - Valor: `HERO_NEXUS`, `MONSTER_NEXUS`, `BUSH`, `CAVE`, `KOULOU`, `OBSTACLE`
+
+**Relationships**
+
+- Returned by `Tile.getType()` and used as the primary “switch key” for rules, rendering, terrain buffs, and special-tile checks.
+
+------
+
+### `world.AbstractTile`
+
+**Responsibility**
+
+- Shared base implementation for most tiles:
+  - Stores `TileType type` and `boolean accessible`
+  - Implements `isAccessible()` and `getType()`
+  - Allows toggling accessibility via `setAccessible(boolean)`
+
+**Relationships**
+
+- Extended by tiles with simple behavior: `CommonTile`, `InaccessibleTile`, `MonsterNexusTile`, `ObstacleTile`.
+
+------
+
+### `world.CommonTile` extends `AbstractTile`
+
+**Responsibility**
+
+- Represents “normal/terrain” tiles.
+- Supports types: `COMMON`, `BUSH`, `CAVE`, `KOULOU`, `OBSTACLE`.
+- Encodes obstacle blocking rule: `OBSTACLE` tiles start as not accessible.
+
+**Relationships**
+
+- Heavily used by `World` generation (both classic and Valor lane filling).
+- Tile type is used by terrain/buff systems (e.g., applying BUSH/CAVE/KOULOU effects).
+
+------
+
+### `world.InaccessibleTile` extends `AbstractTile`
+
+**Responsibility**
+
+- Permanent blocked tile: type `INACCESSIBLE`, not accessible.
+
+**Relationships**
+
+- Used in classic random generation and as fixed lane walls in Valor (columns 2 and 5).
+
+------
+
+### `world.MarketTile` implements `Tile`
+
+**Responsibility**
+
+- A passable market location (always accessible).
+- Holds an optional `market.Market` instance that can be set later (`getMarket()`, `setMarket()`).
+
+**Relationships**
+
+- Used in classic mode as shop locations.
+- Base class for `HeroNexusTile` in Valor (so nexus can also act as a shop location).
+
+------
+
+### `world.HeroNexusTile` extends `MarketTile`
+
+**Responsibility**
+
+- Valor hero base tile; overrides `getType()` to return `HERO_NEXUS` (while remaining accessible like a market tile).
+
+**Relationships**
+
+- Checked by Valor gameplay logic to gate shopping/recall behavior and other nexus-only actions.
+
+------
+
+### `world.MonsterNexusTile` extends `AbstractTile`
+
+**Responsibility**
+
+- Valor monster base tile: type `MONSTER_NEXUS`, accessible.
+
+**Relationships**
+
+- Placed by Valor world generator on the top row; used by win/advance conditions and AI/targeting logic at higher layers.
+
+------
+
+### `world.ObstacleTile` extends `AbstractTile`
+
+**Responsibility**
+
+- Explicit obstacle tile: type `OBSTACLE`, initially not accessible.
+- Supports clearing: `removeObstacle()` sets the tile to accessible.
+
+**Relationships**
+
+- Mutated by movement/utility actions that remove obstacles; `World.isAccessible(...)` will reflect the updated passability.
