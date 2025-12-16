@@ -275,19 +275,24 @@ Services/Systems
 
 - **Component:** `core.ValorGameEngine`  
 
-  **Responsibility:** Integrate `CombatResolver` for damage, `RewardService` for kill/wave rewards, and `BattleSupport` for revives/recovery within the Valor turn loop (hero phase, monster phase, cleanup, end-of-round).
+  **Responsibility:** Integrate `CombatResolver` for damage, `RewardService` for kill/wave rewards,
+  and `BattleSupport` for revives/recovery within the Valor turn loop (hero phase, monster phase, cleanup, end-of-round).
 
 ## 13) Monster Selection Logic
 
 - **Component:** `data.MonsterFactory` 
 
-  **Responsibility:** Spawn monsters targeting a requested level (or nearest available level), aligning encounters with the heroes’ progression.
+  **Responsibility:** Spawn monsters targeting a requested level (or nearest available level),
+  aligning encounters with the heroes’ progression.
 
 ## 14) Retreat Action (LoV-only)
 
 - **Components:** `ValorRules` / `HeroMovementService` / `MonsterSystem` / `ValorContext` (immunity tracking)  
 
-  **Responsibility:** Engaged-only retreat option; hero falls back 1 tile, engaged monster advances 1 tile, hero heals 15% max HP and gains 1-turn immunity; monster attacks honor immunity and decrement it at the end of the monster phase.  
+  **Responsibility:** Engaged-only retreat option; hero falls back 1 tile, engaged monster advances 1 tile,
+  hero heals 15% max HP and gains 1-turn immunity;
+  monster attacks honor immunity and decrement it at the end of the monster phase.
+  
   - Menu text: "Retreat (fall back one tile, engaged monster advances)".
 
 ```java
