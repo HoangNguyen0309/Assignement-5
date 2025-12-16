@@ -251,3 +251,64 @@ Services/Systems
 - **New phases** → add new `Phase`
 - **New terrain types** → update `TerrainSystem`
 - **New UI** → replace `Renderer` / `InputHandler`
+
+---
+
+## 10) Recent Updates (LoV)
+
+### LoV Combat Utility
+
+- **Component:** `battle.CombatResolver`  
+
+  **Responsibility:** Wrap existing hero/monster attack and 
+  spell casting with terrain-aware damage calculation 
+  (Bush/Cave/Koulou buffs). 
+  Used by the LoV engine during hero and monster attacks.
+
+## 11) Rewards & Recovery Services
+
+- **Components:** `battle.RewardService`, `battle.BattleSupport`  
+
+  **Responsibility:**  
+  - `RewardService`: Distribute gold/XP for monster kills and end-of-wave events in LoV.  
+  - `BattleSupport`: Provide revive and end-of-round recovery helpers (HP/MP restoration), invoked in the LoV end-of-round flow.
+
+## 12) LoV Engine Integration
+
+- **Component:** `core.ValorGameEngine`  
+
+  **Responsibility:** Integrate `CombatResolver` for damage, `RewardService` for kill/wave rewards, and `BattleSupport` for revives/recovery within the Valor turn loop (hero phase, monster phase, cleanup, end-of-round).
+
+## 13) Monster Selection Logic
+
+- **Component:** `data.MonsterFactory` 
+
+  **Responsibility:** Spawn monsters targeting a requested level (or nearest available level), aligning encounters with the heroes’ progression.
+
+## 14) Retreat Action (LoV-only)
+
+- **Components:** `ValorRules` / `HeroMovementService` / `MonsterSystem` / `ValorContext` (immunity tracking)  
+
+  **Responsibility:** Engaged-only retreat option; hero falls back 1 tile, engaged monster advances 1 tile, hero heals 15% max HP and gains 1-turn immunity; monster attacks honor immunity and decrement it at the end of the monster phase.  
+  - Menu text: "Retreat (fall back one tile, engaged monster advances)".
+
+```java
+// core/valor/services/HeroMovementService.retreat (excerpt)
+if (!ValorRules.isHeroEngaged(ctx, hero)) return false; // only while engaged
+Monster engaged = ValorRules.getEngagedMonster(ctx, hero);
+
+// move hero back one tile (validation omitted here)
+ctx.heroPositions.put(hero, dest);
+terrain.apply(ctx, hero, dest);
+advanceMonster(ctx, pos, engaged); // try to advance the engaged monster
+
+int healAmount = (int) Math.ceil(hero.getMaxHP() * 0.15);
+hero.heal(healAmount);
+ctx.grantHeroImmunity(hero, 1); // 1-turn immunity checked in MonsterSystem
+```
+
+## 15) UI/Prompt Fix
+
+- **Component:** `party.PartyBuilder`  
+
+  **Responsibility:** Correct classic hero selection prompt text for clarity (range 1–3).
