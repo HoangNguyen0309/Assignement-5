@@ -1,38 +1,122 @@
 @startuml
-skinparam classAttributeIconSize 0
 skinparam linetype ortho
+skinparam classAttributeIconSize 0
 
-package entry {
-  class Main
+' ==== Entry / IO ====
+class Main {
+  +main(String[] args)
 }
-
-package battle {
-  interface Battle
-}
-
 package io {
-  interface Renderer
+  interface Renderer {
+    +renderWorld(World)
+    +renderWorld(World, Map<Hero,Position>, Map<Monster,Position>, Map<Hero,String>, Map<Monster,String>)
+    +renderHeroStats(List<Hero>)
+    +renderHeroStats(List<Hero>, Map<Hero,String>)
+    +renderMonsterStats(List<Monster>)
+    +renderMonsterStats(List<Monster>, Map<Monster,String>)
+    +renderMessage(String)
+  }
   class ConsoleRenderer
-  interface InputHandler
+  interface InputHandler {
+    +readMovement(): Direction
+    +readInt(): int
+    +readYesNo(): boolean
+    +readLine(): String
+  }
   class ConsoleInputHandler
-  class BannerPrinter
+  class BannerPrinter {
+    -bannerPath: Path
+    -classpathLocation: String
+    +printValorBanner(): void
+  }
   Renderer <|.. ConsoleRenderer
   InputHandler <|.. ConsoleInputHandler
 }
 
+' ==== Core Engines ====
 package core {
-  class GameEngine
-  class ValorGameEngine
-  class ValorGameLoop
+  class GameEngine {
+    -state: GameState
+    -world: World
+    -party: List<Hero>
+    -renderer: Renderer
+    -input: InputHandler
+    -eventManager: EventManager
+    -monsterFactory: MonsterFactory
+    -itemFactory: ItemFactory
+    -marketController: MarketController
+    -random: Random
+    +run(): void
+  }
+  enum GameState { EXPLORE; BATTLE; GAME_OVER }
+
+  class ValorGameEngine {
+    -loop: ValorGameLoop
+    +start(): void
+    +run(): void
+  }
+
+  class ValorGameLoop {
+    -ctx: ValorContext
+    -setup: Phase
+    -hero: Phase
+    -monster: Phase
+    -cleanup: Phase
+    -endRound: Phase
+    +run(): void
+  }
 }
 
+' ==== Valor Context & Support ====
 package core.valor {
-  class ValorContext
-  class ValorSupport <<static>>
+  class ValorContext {
+    +world: World
+    +heroes: List<Hero>
+    +renderer: Renderer
+    +input: InputHandler
+    +marketController: MarketController
+    +monsterFactory: MonsterFactory
+    +itemFactory: ItemFactory
+    +random: Random
+    +monsterWavePeriod: int
+    +heroPositions: Map<Hero,Position>
+    +heroSpawnPositions: Map<Hero,Position>
+    +activeTerrainBuff: Map<Hero,TileType>
+    +terrainBuffDeltas: Map<Hero,int[]>
+    +monsters: List<Monster>
+    +monsterPositions: Map<Monster,Position>
+    +monsterCodes: Map<Monster,String>
+    +heroCodes: Map<Hero,String>
+    +laneMaxLevels: Map<Integer,Integer>
+    +heroImmunityTurns: Map<Hero,Integer>
+    +roundLog: List<String>
+    +roundCount: int
+    +gameOver: boolean
+    +log(String): void
+    +grantHeroImmunity(Hero,int): void
+    +isHeroImmune(Hero): boolean
+    +tickHeroImmunity(): void
+  }
+
+  class ValorSupport <<static>> {
+    +initializeHeroPositions(ValorContext)
+    +spawnInitialMonsters(ValorContext)
+    +assignHeroCodes(ValorContext)
+    +assignMonsterCodes(ValorContext)
+    +renderHeroTurnMenu(ValorContext, Hero, boolean)
+    +isInsideBoard(ValorContext,int,int)
+    +isInRange(ValorContext,Position,Position)
+    +wouldMovePastEnemy(ValorContext,Position,Position,boolean)
+    +isBehindEnemyInDestination(ValorContext,Position,boolean)
+    +updateLaneMaxLevels(ValorContext)
+    +maxHeroLevel(ValorContext): int
+    +handleInventory(ValorContext, Hero): boolean
+  }
 }
 
+' ==== Valor Phases ====
 package core.valor.phases {
-  interface Phase
+  interface Phase { +execute(ValorContext) }
   class SetupPhase
   class HeroPhase
   class MonsterPhase
@@ -45,153 +129,169 @@ package core.valor.phases {
   Phase <|.. EndOfRoundPhase
 }
 
+' ==== Valor Services ====
 package core.valor.services {
-  class HeroTurnController
-  class HeroMovementService
-  class HeroCombatService
-  class HeroInventoryService
-  class MarketSystem
-  class TerrainSystem
-  class MonsterSystem
-  class ValorRules <<static>>
+  class HeroTurnController {
+    -terrain: TerrainSystem
+    -movement: HeroMovementService
+    -combat: HeroCombatService
+    -inventory: HeroInventoryService
+    -market: MarketSystem
+    +takeTurns(ValorContext): void
+  }
+
+  class HeroMovementService {
+    -terrain: TerrainSystem
+    +move(ValorContext, Hero): boolean
+    +recall(ValorContext, Hero): boolean
+    +teleport(ValorContext, Hero): boolean
+    +removeObstacle(ValorContext, Hero): boolean
+  }
+  class HeroCombatService { ..attacks & spells.. }
+  class HeroInventoryService { ..equip/use.. }
+  class MarketSystem { +openShopIfAtHeroNexus(ValorContext, Hero): void }
+  class TerrainSystem { +apply(ValorContext, Hero, Position): void }
+  class MonsterSystem {
+    +takeTurn(ValorContext): void
+    ..attack/move helpers..
+  }
+  class ValorRules <<static>> {
+    +isInsideBoard(ValorContext,int,int): boolean
+    +samePos(Position,Position): boolean
+    +isInRange(ValorContext,Position,Position): boolean
+    +isHeroEngaged(ValorContext, Hero): boolean
+    +getEngagedMonster(ValorContext, Hero): Monster
+    +isOccupiedByHero(ValorContext, Position, Hero): boolean
+    +isOccupiedByMonster(ValorContext, Position, Monster): boolean
+    +wouldMovePastEnemy(ValorContext,Position,Position,boolean): boolean
+    +isBehindEnemyInDestination(ValorContext,Position,boolean): boolean
+  }
 }
 
-class World
-class Hero
-class Monster
-class HeroFactory
-class ItemFactory
-class MonsterFactory
-class MarketController
-class PartyBuilder
-
-Main --> Renderer
-Main --> InputHandler
-Main --> BannerPrinter
-Main --> PartyBuilder
-Main --> HeroFactory
-Main --> World
-Main --> GameEngine : classic mode
-Main --> ValorGameEngine : valor mode
-
-GameEngine ..|> Battle
-ValorGameEngine ..|> Battle
-ValorGameEngine *-- ValorGameLoop
-ValorGameEngine ..> ValorContext
-
-ValorGameLoop *-- ValorContext
-ValorGameLoop *-- SetupPhase
-ValorGameLoop *-- HeroPhase
-ValorGameLoop *-- MonsterPhase
-ValorGameLoop *-- CleanupPhase
-ValorGameLoop *-- EndOfRoundPhase
-
-ValorContext o-- World
-ValorContext o-- Renderer
-ValorContext o-- InputHandler
-ValorContext o-- Hero
-ValorContext o-- Monster
-ValorContext o-- MarketController
-ValorContext o-- MonsterFactory
-ValorContext o-- ItemFactory
-
-HeroPhase *-- HeroTurnController
-HeroTurnController *-- HeroMovementService
-HeroTurnController *-- HeroCombatService
-HeroTurnController *-- HeroInventoryService
-HeroTurnController *-- MarketSystem
-HeroTurnController *-- TerrainSystem
-HeroTurnController ..> ValorSupport : render menu
-HeroMovementService --> TerrainSystem
-HeroMovementService ..> ValorRules
-MonsterPhase *-- MonsterSystem
-MonsterSystem ..> ValorRules
-SetupPhase ..> ValorSupport
-CleanupPhase ..> ValorSupport
-EndOfRoundPhase ..> ValorSupport
-ValorSupport ..> ValorRules
-@enduml
-@startuml
-skinparam classAttributeIconSize 0
-skinparam linetype ortho
-
-package entry {
-  class Main
-}
-
+' ==== Battle / Data ====
 package battle {
-  interface Battle
+  interface Battle { +start(): void }
+}
+package data {
+  class HeroFactory
+  class MonsterFactory
+  class ItemFactory
+}
+package market {
+  class MarketController
+  class Market
 }
 
-package io {
-  interface Renderer
-  class ConsoleRenderer
-  interface InputHandler
-  class ConsoleInputHandler
-  class BannerPrinter
-  Renderer <|.. ConsoleRenderer
-  InputHandler <|.. ConsoleInputHandler
+' ==== World / Tiles ====
+package world {
+  class World {
+    -tiles: Tile[][]
+    -size: int
+    -partyPosition: Position
+    -valorHeroPosition: Position[]
+    -random: Random
+    -type: String
+    +move(Direction): boolean
+    +getTile(int,int): Tile
+    +getCurrentTile(): Tile
+    +getHeroNexusForLane(int): Position
+    +getMonsterNexusForLane(int): Position
+    +getHeroNexusColumnsForLane(int): Position[]
+    +getMonsterNexusColumnsForLane(int): Position[]
+    +isAccessible(Position): boolean
+    +isHeroNexus(Position): boolean
+    +isMonsterNexus(Position): boolean
+    +sameLane(Position,Position): boolean
+    +laneIndexForCol(int): int
+    +getValorHeroPosition(): Position[]
+  }
+  enum TileType { COMMON; BUSH; CAVE; KOULOU; OBSTACLE; HERO_NEXUS; MONSTER_NEXUS; MARKET; INACCESSIBLE }
+  abstract class Tile {
+    -type: TileType
+    +getType(): TileType
+    +isAccessible(): boolean
+  }
+  class CommonTile
+  class MarketTile
+  class HeroNexusTile
+  class MonsterNexusTile
+  class InaccessibleTile
 }
 
-package core {
-  class GameEngine
-  class ValorGameEngine
-  class ValorGameLoop
+' ==== Characters / Items ====
+package characters {
+  interface Character {
+    +getName(): String
+    +getLevel(): int
+    +getHP(): int
+    +getMaxHP(): int
+    +isFainted(): boolean
+    +takeDamage(int): void
+    +heal(int): void
+  }
+  abstract class AbstractCharacter {
+    #name: String
+    #level: int
+    #hp: int
+    #maxHp: int
+  }
+  enum HeroType { WARRIOR; SORCERER; PALADIN }
+  class Hero {
+    -mana: int
+    -maxMana: int
+    -strength: int
+    -dexterity: int
+    -agility: int
+    -experience: long
+    -gold: int
+    -type: HeroType
+    -equippedWeapon: Weapon
+    -equippedArmor: Armor
+    -usingWeaponTwoHanded: boolean
+    -inventory: Inventory
+    +gainExperience(long)
+    +basicAttackDamage(): int
+    +tryDodge(): boolean
+    +getArmorReduction(): int
+    +equipWeapon(Weapon, boolean)
+    +equipArmor(Armor)
+    +applyPotion(Potion)
+    +restoreMana(int)
+  }
+  class Monster {
+    -damage: int
+    -defense: int
+    -dodgeChance: int
+    +getDamage(): int
+    +takeDamage(int)
+    +takeSpellDamage(int)
+  }
+  Character <|.. AbstractCharacter
+  AbstractCharacter <|-- Hero
+  AbstractCharacter <|-- Monster
 }
 
-package core.valor {
-  class ValorContext
-  class ValorSupport <<static>>
+package items {
+  abstract class Item { +getName(): String; +getPrice(): int }
+  class Inventory { -items: List<Item>; +add(Item); +remove(Item): boolean; +get(int): Item; +size(): int }
+  class Weapon extends Item { +getEffectiveDamage(boolean): int; +getHandsRequired(): int }
+  class Armor extends Item { +getDamageReduction(): int }
+  class Potion extends Item { +getAmount(): int }
+  class Spell extends Item { +getType(): String }
 }
 
-package core.valor.phases {
-  interface Phase
-  class SetupPhase
-  class HeroPhase
-  class MonsterPhase
-  class CleanupPhase
-  class EndOfRoundPhase
-  Phase <|.. SetupPhase
-  Phase <|.. HeroPhase
-  Phase <|.. MonsterPhase
-  Phase <|.. CleanupPhase
-  Phase <|.. EndOfRoundPhase
-}
-
-package core.valor.services {
-  class HeroTurnController
-  class HeroMovementService
-  class HeroCombatService
-  class HeroInventoryService
-  class MarketSystem
-  class TerrainSystem
-  class MonsterSystem
-  class ValorRules <<static>>
-}
-
-class World
-class Hero
-class Monster
-class HeroFactory
-class ItemFactory
-class MonsterFactory
-class MarketController
-class PartyBuilder
-
+' ==== Relationships ====
 Main --> Renderer
 Main --> InputHandler
 Main --> BannerPrinter
-Main --> PartyBuilder
 Main --> HeroFactory
 Main --> World
-Main --> GameEngine : classic mode
-Main --> ValorGameEngine : valor mode
+Main --> GameEngine : creates (classic)
+Main --> ValorGameEngine : creates (valor)
 
 GameEngine ..|> Battle
 ValorGameEngine ..|> Battle
 ValorGameEngine *-- ValorGameLoop
-ValorGameEngine ..> ValorContext
-
 ValorGameLoop *-- ValorContext
 ValorGameLoop *-- SetupPhase
 ValorGameLoop *-- HeroPhase
@@ -199,14 +299,9 @@ ValorGameLoop *-- MonsterPhase
 ValorGameLoop *-- CleanupPhase
 ValorGameLoop *-- EndOfRoundPhase
 
-ValorContext o-- World
-ValorContext o-- Renderer
-ValorContext o-- InputHandler
-ValorContext o-- Hero
-ValorContext o-- Monster
-ValorContext o-- MarketController
-ValorContext o-- MonsterFactory
-ValorContext o-- ItemFactory
+SetupPhase ..> ValorSupport
+CleanupPhase ..> ValorSupport
+EndOfRoundPhase ..> ValorSupport
 
 HeroPhase *-- HeroTurnController
 HeroTurnController *-- HeroMovementService
@@ -214,13 +309,35 @@ HeroTurnController *-- HeroCombatService
 HeroTurnController *-- HeroInventoryService
 HeroTurnController *-- MarketSystem
 HeroTurnController *-- TerrainSystem
-HeroTurnController ..> ValorSupport : render menu
-HeroMovementService --> TerrainSystem
+
 HeroMovementService ..> ValorRules
+HeroMovementService *-- TerrainSystem
 MonsterPhase *-- MonsterSystem
 MonsterSystem ..> ValorRules
-SetupPhase ..> ValorSupport
-CleanupPhase ..> ValorSupport
-EndOfRoundPhase ..> ValorSupport
 ValorSupport ..> ValorRules
+
+ValorContext o-- World
+ValorContext o-- Hero
+ValorContext o-- Monster
+ValorContext o-- Renderer
+ValorContext o-- InputHandler
+ValorContext o-- MarketController
+ValorContext o-- MonsterFactory
+ValorContext o-- ItemFactory
+
+Hero o-- Inventory
+Inventory o-- Item
+Weapon --|> Item
+Armor  --|> Item
+Potion --|> Item
+Spell  --|> Item
+
+World o-- Tile
+CommonTile --|> Tile
+MarketTile --|> Tile
+HeroNexusTile --|> Tile
+MonsterNexusTile --|> Tile
+InaccessibleTile --|> Tile
+World ..> TileType
+
 @enduml
