@@ -96,6 +96,12 @@ Assignement-5/
 - Dynamic content from data files: heroes/monsters/items/spells are all loaded and scaled at runtime, so balance changes are data-driven, not hardcoded.
 - Valor board play: three-lane map with walls, per-lane nexus tiles, terrain buffs (Bush/Cave/Koulou), obstacles you can clear, and hero/monster codes rendered on a zoomed grid.
 
+## LoV combat Highlights
+
+- Retreat: engaged-only; hero back 1 tile, engaged monster forward 1 tile; heal 15% (capped) + 1-turn immunity (MonsterSystem honors/decrements); menu text updated.
+- MonsterFactory: spawns monsters at requested/nearest level.
+- Combat/Recovery: added RewardService/BattleSupport for kill/wave rewards and end-of-round revive/recovery; CombatResolver applies terrain buffs to damage.
+
 ## How to compile and run
 
 ---
@@ -748,6 +754,4 @@ Chrysophylax moved to (3, 4).
 Skoraeus_Stonebones has reached the Monster Nexus! Heroes win!
 Game over. Thanks for playing Legends of Valor!
 ```
-
-
 
