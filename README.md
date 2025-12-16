@@ -102,6 +102,16 @@ Assignement-5/
 - MonsterFactory: spawns monsters at requested/nearest level.
 - Combat/Recovery: added RewardService/BattleSupport for kill/wave rewards and end-of-round revive/recovery; CombatResolver applies terrain buffs to damage.
 
+## Team Work Split
+
+We will keep the existing `characters/`, `items/`, `battle/`, `market/`, `data/` largely unchanged, use `world.World` to represent the fixed 8×8 Legends of Valor board, and store hero/monster positions in a new `core/ValorGameEngine`.
+
+- **Xiaoxi Jiang (World & Tiles):** Implement the LoV board in `world/World.java`, extend `TileType`, add/adjust tile classes (e.g., Nexus/buff/obstacle tiles as needed), and provide world helper methods (lane nexus positions, accessibility/bounds checks) for the engine to use.
+- **Chunyu Wu (Combat & Progression):** Own heroes/monsters and combat logic: build a reusable LoV combat helper (e.g., `battle/CombatResolver`), apply terrain buffs, and handle XP/gold/leveling plus death/respawn and end-of-round recovery helpers.
+- **Hoang Nguyen (Engine, UI, AI, Shop):** Build `core/ValorGameEngine` and the turn loop, extend `Renderer/ConsoleRenderer` to draw the 8×8 board with units, implement monster AI and player action menus, integrate Nexus shopping via `MarketController`, and switch `Main.java` to launch the new engine.
+
+After that we worked together to do the file works, including README, Design Document and UML.
+
 ## How to compile and run
 
 ---
