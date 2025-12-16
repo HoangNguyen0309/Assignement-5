@@ -254,9 +254,7 @@ Services/Systems
 
 ---
 
-## 10) Recent Updates (LoV)
-
-### LoV Combat Utility
+## 10) LoV Combat Utility
 
 - **Component:** `battle.CombatResolver`  
 
